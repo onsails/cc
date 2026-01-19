@@ -3,11 +3,13 @@ name: review-loop
 description: Automated code review and fix loop with minimum 4 iterations, spawning subagents per issue to preserve context
 ---
 
-# ⚠️ STOP - EXECUTE THIS FIRST ⚠️
+# MANDATORY PRE-FLIGHT CHECK
 
-## FIRST ACTION: Create Iteration TODOs NOW
+Before executing ANY step of this skill, you MUST complete this checklist:
 
-**Before doing ANYTHING else, call TodoWrite with exactly this:**
+## Step 0: Create Iteration TODOs (BLOCKING)
+
+**Call TodoWrite NOW with this exact payload:**
 
 ```json
 {
@@ -20,7 +22,14 @@ description: Automated code review and fix loop with minimum 4 iterations, spawn
 }
 ```
 
-**Do this NOW. Do not read further until you have created these TODOs.**
+**WORKFLOW BLOCKED until this TodoWrite is called.**
+
+If your first tool call is NOT TodoWrite with iteration TODOs, you are violating this skill.
+
+✓ Correct first action: `TodoWrite` with 4 iteration TODOs
+✗ Wrong first action: `Bash` (git commands)
+✗ Wrong first action: `Task` (spawning reviewer)
+✗ Wrong first action: `Read` (reading files)
 
 ---
 
