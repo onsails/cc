@@ -1,29 +1,38 @@
-# review-loop
+# onsails/cc
 
-Automated code review and fix loop for Claude Code.
+Claude Code plugins for power users.
+
+## Plugins
+
+### review-loop
+
+Automated code review and fix loop with per-issue subagents.
+
+- Runs minimum 4 review iterations until stable
+- Spawns isolated Task agent per issue (preserves main context)
+- Auto-discovers project standards: CLAUDE.md, CI configs, linter rules
+- Smart target branch detection via PR or git history
+
+[Full documentation →](./review-loop/README.md)
+
+### rust-dev
+
+Strict Rust development standards with FAIL FAST error handling.
+
+- Enforces Edition 2024, proper error propagation
+- Workspace templates and dependency version lookup
+- rust-builder and review-rust-code agents included
+- Module organization guidance (split at 500+ lines)
+
+[Full documentation →](./rust-dev/README.md)
 
 ## Installation
 
 ```bash
 claude plugin marketplace add https://github.com/onsails/cc
 claude plugin install review-loop@onsails-cc
+claude plugin install rust-dev@onsails-cc
 ```
-
-## Usage
-
-```bash
-claude /review-loop
-```
-
-Or invoke the skill directly in conversation.
-
-## What it does
-
-1. Determines target branch (via PR or git history)
-2. Spawns `local-reviewer` agent to find issues
-3. Spawns fix agents per issue (preserves context)
-4. Loops minimum 4 iterations until stable
-5. Commits fixes, awaits user instruction
 
 ## License
 
