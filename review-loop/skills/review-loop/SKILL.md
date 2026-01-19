@@ -162,17 +162,25 @@ REPEAT:
 
 ## Phase 1: Review
 
-**⚠️ REMINDER: Do NOT background. Let Task block. See top of skill.**
+**⚠️ STOP. READ THIS BEFORE CALLING Task TOOL.**
 
-Spawn the `local-reviewer` agent using the Task tool:
+You MUST call the Task tool with EXACTLY these parameters:
 
-**Task parameters (EXACT - do not modify):**
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| `subagent_type` | `review-loop:local-reviewer` | Required |
-| `description` | `Iteration N: Review` | Include iteration number |
-| `run_in_background` | `false` | **MANDATORY** - never true |
-| `prompt` | (see template below) | |
+```
+Task(
+  subagent_type = "review-loop:local-reviewer"
+  description = "Iteration N: Review"
+  run_in_background = false   ← MANDATORY. If you set true, you break the skill.
+  prompt = <see below>
+)
+```
+
+**run_in_background MUST BE false.**
+**DO NOT set run_in_background to true.**
+**DO NOT omit run_in_background (defaults may vary).**
+**EXPLICITLY SET run_in_background = false.**
+
+If you background this agent and poll the output file, you are violating this skill and wasting context.
 
 **Prompt template (use the TARGET_BRANCH determined in Step 0):**
 
