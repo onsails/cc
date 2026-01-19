@@ -5,7 +5,10 @@ description: Automated code review and fix loop with minimum 4 iterations, spawn
 
 # ⚠️ CRITICAL: READ THIS FIRST ⚠️
 
-## This is a LOOP - Minimum 4 Iterations
+## This is an AUTOMATED LOOP - Minimum 4 Iterations
+
+**Do NOT ask for permission between phases. Do NOT ask "Should I fix these?"**
+**The user invoked this skill expecting AUTOMATIC review→fix→verify cycles.**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -242,6 +245,16 @@ Format:
 **Do NOT proceed to Phase 2 until issues are displayed.**
 This ensures the user can see what's being fixed and can interrupt if needed.
 
+**After displaying issues, IMMEDIATELY proceed to Phase 2. Do NOT:**
+- Ask "Would you like me to fix these?"
+- Ask "Should I proceed?"
+- Wait for user confirmation
+
+This is an AUTOMATED loop. The user invoked the skill knowing it will fix issues automatically.
+If they want to stop, they will interrupt (Ctrl+C).
+
+**Exception:** If issues hit scope boundaries during fixing (Step 2c-escalation), DO ask user how to proceed with those specific escalated issues.
+
 ---
 
 ## Phase 2: Fix Issues
@@ -455,6 +468,8 @@ Awaiting further instructions (not merging automatically).
 12. **Skipping iteration TODOs** - NEVER skip creating "Iteration N: Review and fix cycle" TODOs. The user needs to see iteration progress. Create the TODO at the START of each iteration, mark completed at the END.
 
 13. **Generic one-shot TODOs** - NEVER create generic TODOs like "Run review" or "Fix issues". Each TODO must include the iteration number: "Iteration 1: ...", "Iteration 2: ...", etc.
+
+14. **Asking for permission to fix** - NEVER ask "Would you like me to fix these?" or "Should I proceed?" for normal issues. This is an AUTOMATED loop. After displaying issues, IMMEDIATELY start fixing. The user will Ctrl+C if they want to stop. **Exception:** DO ask user about escalated issues (scope boundary hits) - see Step 2c-escalation.
 
 ---
 
