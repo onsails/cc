@@ -7,28 +7,46 @@ description: Automated code review and fix loop with minimum 4 iterations, spawn
 
 ## This is an AUTOMATED LOOP - Minimum 4 Iterations
 
-**Do NOT ask for permission between phases. Do NOT ask "Should I fix these?"**
-**The user invoked this skill expecting AUTOMATIC review→fix→verify cycles.**
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  ITERATION 1 → ITERATION 2 → ITERATION 3 → ITERATION 4 → ...   │
 │                                                                 │
-│  Each iteration: Review → Fix → Check → (repeat or exit)       │
+│  Each iteration: Review → Fix ALL issues → Check → repeat      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Before EACH iteration, create this TODO:**
+## ⛔ FORBIDDEN BEHAVIORS
+
+1. **Do NOT ask "Would you like me to fix these?"** - Just fix them.
+2. **Do NOT ask "Should I proceed?"** - Just proceed.
+3. **Do NOT ask "Which issues should I address?"** - Address ALL of them.
+4. **Do NOT offer options** - This is automated, not interactive.
+5. **Do NOT create per-issue TODOs first** - Create iteration TODO first.
+
+## ✅ REQUIRED: Iteration TODO Structure
+
+**IMMEDIATELY after skill loads, create iteration TODOs:**
+
 ```
-TodoWrite: "Iteration N: Review and fix cycle"
+TodoWrite([
+  { content: "Iteration 1: Review and fix cycle", status: "in_progress", activeForm: "Running iteration 1" },
+  { content: "Iteration 2: Review and fix cycle", status: "pending", activeForm: "Running iteration 2" },
+  { content: "Iteration 3: Review and fix cycle", status: "pending", activeForm: "Running iteration 3" },
+  { content: "Iteration 4: Review and fix cycle", status: "pending", activeForm: "Running iteration 4" }
+])
 ```
 
-**You MUST track iterations explicitly. Example TODO list during execution:**
+**Create per-issue TODOs INSIDE each iteration, not before.**
+
+Example flow:
 ```
-☑ Iteration 1: Review and fix cycle (completed - found 5 issues, fixed 5)
-☑ Iteration 2: Review and fix cycle (completed - found 2 issues, fixed 2)
-☐ Iteration 3: Review and fix cycle (in_progress)
-☐ Iteration 4: Review and fix cycle (pending)
+☐ Iteration 1: Review and fix cycle (in_progress)
+  → Review finds 5 issues
+  → Add sub-TODOs: "Fix [major]: issue 1", "Fix [major]: issue 2"...
+  → Fix each issue
+  → Mark Iteration 1 complete
+☐ Iteration 2: Review and fix cycle (now in_progress)
+  → ...
 ```
 
 ## ⛔ NEVER Background the Reviewer
