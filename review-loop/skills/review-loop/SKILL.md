@@ -165,31 +165,24 @@ These persist across all iterations of the review loop.
 
 ### Main Loop
 
-**At the START of each iteration, IMMEDIATELY create a TODO:**
-
-```
-TodoWrite([
-  ...existing_todos,
-  { content: "Iteration N: Review and fix cycle", status: "in_progress", activeForm: "Running iteration N" }
-])
-```
+**All 4 iteration TODOs were created in Step 0. During execution:**
+- Mark current iteration as `in_progress`
+- When done, mark as `completed`
+- Move to next iteration
 
 **Loop structure:**
 
 ```
-iteration = 0
+REPEAT for iteration 1, 2, 3, 4, ...:
 
-REPEAT:
-    iteration += 1
-
-    → CREATE TODO: "Iteration N: Review and fix cycle" (in_progress)
+    → Mark "Iteration N" TODO as in_progress
     → Phase 1: Review (BLOCKING - no background!)
     → Phase 2: Fix issues (if any)
     → Phase 3: Check exit condition
-    → MARK TODO completed with summary
+    → Mark "Iteration N" TODO as completed
 
     IF iteration >= 4 AND no critical/major issues:
-        EXIT (minor/suggestions allowed)
+        EXIT
     ELSE:
         CONTINUE to iteration N+1
 ```
@@ -341,12 +334,14 @@ For EACH issue from the review, in order:
 
 #### Step 2a: Track with TODO
 
+**ADD per-issue TODO to existing iteration TODOs (don't replace them):**
+
 ```
-TodoWrite: Add todo with status "in_progress"
-Content: "Fix [<severity>]: <issue summary>"
+TodoWrite: Add "Fix [<severity>]: <issue summary>" with status "in_progress"
+Keep all existing "Iteration N" TODOs intact!
 ```
 
-Examples:
+Examples of per-issue TODOs:
 - `Fix [critical]: SQL injection in user query`
 - `Fix [major]: Missing null check in auth handler`
 - `Fix [minor]: Unused import in lib.rs`
