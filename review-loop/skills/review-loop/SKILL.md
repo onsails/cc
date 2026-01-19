@@ -162,6 +162,19 @@ REPEAT:
 
 ## Phase 1: Review
 
+### Step 1a: Generate unique output path
+
+Before spawning the reviewer, generate a unique file path:
+
+```bash
+REVIEW_OUTPUT="/tmp/review-loop-$(git rev-parse --short HEAD)-iter${iteration}-$(date +%s).md"
+echo "Review output will be written to: ${REVIEW_OUTPUT}"
+```
+
+Store this path - you'll need it for the prompt and for reading results.
+
+### Step 1b: Spawn reviewer (BLOCKING)
+
 **⚠️ STOP. READ THIS BEFORE CALLING Task TOOL.**
 
 You MUST call the Task tool with EXACTLY these parameters:
@@ -171,7 +184,7 @@ Task(
   subagent_type = "review-loop:local-reviewer"
   description = "Iteration N: Review"
   run_in_background = false   ← MANDATORY. If you set true, you break the skill.
-  prompt = <see below>
+  prompt = <see below, include OUTPUT_FILE path>
 )
 ```
 
@@ -180,12 +193,15 @@ Task(
 **DO NOT omit run_in_background (defaults may vary).**
 **EXPLICITLY SET run_in_background = false.**
 
-If you background this agent and poll the output file, you are violating this skill and wasting context.
+If you background this agent and poll, you are violating this skill.
 
-**Prompt template (use the TARGET_BRANCH determined in Step 0):**
+**Prompt template (include OUTPUT_FILE from Step 1a):**
 
 ```
 Perform a local code review of the current branch.
+
+OUTPUT FILE: <REVIEW_OUTPUT path from Step 1a>
+Write your findings to this file using the Write tool. Do NOT return findings in your response.
 
 TARGET BRANCH: <TARGET_BRANCH from Step 0>
 
@@ -207,14 +223,22 @@ ESCALATED (skip, already flagged for human review):
 </for each>
 (or "None" if list is empty)
 
-Return a structured list of issues with severity levels:
+Severity levels:
 - critical: Security vulnerabilities, data loss risks, crashes
 - major: Logic errors, broken functionality, performance issues
 - minor: Code style, minor bugs, inconsistencies
 - suggestion: Improvements, refactoring opportunities
 ```
 
-Collect the issues list from the agent response. Parse each issue for:
+### Step 1c: Read review output
+
+After Task completes, read the output file ONCE:
+
+```bash
+cat ${REVIEW_OUTPUT}
+```
+
+Parse each issue for:
 - Description
 - File path and line number
 - Severity (critical, major, minor, suggestion)
