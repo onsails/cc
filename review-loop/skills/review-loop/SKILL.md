@@ -3,6 +3,46 @@ name: review-loop
 description: Automated code review and fix loop with minimum 4 iterations, spawning subagents per issue to preserve context
 ---
 
+# ⚠️ CRITICAL: READ THIS FIRST ⚠️
+
+## This is a LOOP - Minimum 4 Iterations
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ITERATION 1 → ITERATION 2 → ITERATION 3 → ITERATION 4 → ...   │
+│                                                                 │
+│  Each iteration: Review → Fix → Check → (repeat or exit)       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Before EACH iteration, create this TODO:**
+```
+TodoWrite: "Iteration N: Review and fix cycle"
+```
+
+**You MUST track iterations explicitly. Example TODO list during execution:**
+```
+☑ Iteration 1: Review and fix cycle (completed - found 5 issues, fixed 5)
+☑ Iteration 2: Review and fix cycle (completed - found 2 issues, fixed 2)
+☐ Iteration 3: Review and fix cycle (in_progress)
+☐ Iteration 4: Review and fix cycle (pending)
+```
+
+## ⛔ NEVER Background the Reviewer
+
+**DO NOT use `run_in_background: true` for the reviewer agent.**
+
+If you background the reviewer and poll the output file, you:
+- ❌ Waste main context (the thing we're trying to save)
+- ❌ Defeat the entire purpose of this skill
+- ❌ Force the user to restart the session
+
+**The Task tool blocks by default. LET IT BLOCK. This is correct.**
+
+The reviewer runs in isolated context. When it returns, you get results in one clean message.
+
+---
+
 ## Purpose
 
 Automated quality gate: review → fix → verify loop until code passes.
@@ -86,33 +126,50 @@ These persist across all iterations of the review loop.
 
 ### Main Loop
 
+**At the START of each iteration, IMMEDIATELY create a TODO:**
+
+```
+TodoWrite([
+  ...existing_todos,
+  { content: "Iteration N: Review and fix cycle", status: "in_progress", activeForm: "Running iteration N" }
+])
+```
+
+**Loop structure:**
+
 ```
 iteration = 0
 
 REPEAT:
     iteration += 1
 
-    → Phase 1: Review (display all issues)
+    → CREATE TODO: "Iteration N: Review and fix cycle" (in_progress)
+    → Phase 1: Review (BLOCKING - no background!)
     → Phase 2: Fix issues (if any)
     → Phase 3: Check exit condition
+    → MARK TODO completed with summary
 
     IF iteration >= 4 AND no critical/major issues:
         EXIT (minor/suggestions allowed)
     ELSE:
-        CONTINUE
+        CONTINUE to iteration N+1
 ```
 
 ---
 
 ## Phase 1: Review
 
+**⚠️ REMINDER: Do NOT background. Let Task block. See top of skill.**
+
 Spawn the `local-reviewer` agent using the Task tool:
 
-**Task parameters:**
-- `subagent_type`: `review-loop:local-reviewer`
-- `description`: `Review iteration N`
-- `run_in_background`: `false` (REQUIRED - never background the reviewer)
-- `prompt`: (see template below)
+**Task parameters (EXACT - do not modify):**
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| `subagent_type` | `review-loop:local-reviewer` | Required |
+| `description` | `Iteration N: Review` | Include iteration number |
+| `run_in_background` | `false` | **MANDATORY** - never true |
+| `prompt` | (see template below) | |
 
 **Prompt template (use the TARGET_BRANCH determined in Step 0):**
 
@@ -395,6 +452,10 @@ Awaiting further instructions (not merging automatically).
 
 11. **Backgrounding and polling** - NEVER run reviewer with `run_in_background: true` then poll the output file. This wastes main context - the exact thing we're trying to save. Let the Task block; the reviewer's work happens in isolated context. Blocking is correct.
 
+12. **Skipping iteration TODOs** - NEVER skip creating "Iteration N: Review and fix cycle" TODOs. The user needs to see iteration progress. Create the TODO at the START of each iteration, mark completed at the END.
+
+13. **Generic one-shot TODOs** - NEVER create generic TODOs like "Run review" or "Fix issues". Each TODO must include the iteration number: "Iteration 1: ...", "Iteration 2: ...", etc.
+
 ---
 
 ## Troubleshooting
@@ -407,3 +468,18 @@ Awaiting further instructions (not merging automatically).
 
 **Issue:** Review finds 20+ issues
 **Solution:** Fix all of them sequentially. The subagent approach prevents context bloat.
+
+---
+
+## Final Checklist (verify before each action)
+
+Before spawning reviewer:
+- [ ] Did I create "Iteration N" TODO?
+- [ ] Am I using `run_in_background: false`?
+- [ ] Am I letting the Task block (not polling)?
+
+Before moving to next iteration:
+- [ ] Did I display all issues to user?
+- [ ] Did I mark iteration TODO complete?
+- [ ] Is iteration count < 4 OR are there critical/major issues? → Continue
+- [ ] Is iteration count >= 4 AND no critical/major issues? → Exit to Completion
