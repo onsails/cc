@@ -2,6 +2,7 @@
   "name": "onsails-cc",
   "owner": { "name": "Andrey Kuz" },
   "plugins": [
-    { "name": "review-loop", "source": "./review-loop", "description": "Automated code review loop" }
+    { "name": "review-loop", "source": "./review-loop", "description": "Automated code review loop" },
+    { "name": "rust-dev", "source": "./rust-dev", "description": "Rust development with strict standards and build/review agents" }
   ]
 }

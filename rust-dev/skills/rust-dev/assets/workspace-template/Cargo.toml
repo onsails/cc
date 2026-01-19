@@ -1,0 +1,25 @@
+[workspace]
+members = ["project", "project-cli"]
+resolver = "2"
+
+[workspace.dependencies]
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Derives
+derive_more = { version = "1.0", features = ["full"] }

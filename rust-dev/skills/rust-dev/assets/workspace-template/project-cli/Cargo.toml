@@ -1,0 +1,25 @@
+[package]
+name = "project-cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "project"
+path = "src/main.rs"
+
+[dependencies]
+# Local dependency
+project = { path = "../project" }
+
+# Error handling - use anyhow for binaries
+anyhow = { workspace = true }
+
+# CLI
+clap = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

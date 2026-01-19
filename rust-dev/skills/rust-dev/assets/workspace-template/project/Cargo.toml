@@ -1,0 +1,21 @@
+[package]
+name = "project"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Error handling - use thiserror for library crates
+thiserror = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+
+# Derives
+derive_more = { workspace = true }
+
+[dev-dependencies]
+# Testing - use anyhow for tests
+anyhow = { workspace = true }
