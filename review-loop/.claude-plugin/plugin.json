@@ -1,6 +1,6 @@
 {
   "name": "review-loop",
   "description": "Automated code review and fix loop with minimum 4 iterations",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": { "name": "Andrey Kuz" }
 }

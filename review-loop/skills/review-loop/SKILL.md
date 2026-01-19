@@ -111,6 +111,7 @@ Spawn the `local-reviewer` agent using the Task tool:
 **Task parameters:**
 - `subagent_type`: `review-loop:local-reviewer`
 - `description`: `Review iteration N`
+- `run_in_background`: `false` (REQUIRED - never background the reviewer)
 - `prompt`: (see template below)
 
 **Prompt template (use the TARGET_BRANCH determined in Step 0):**
@@ -391,6 +392,8 @@ Awaiting further instructions (not merging automatically).
 9. **Auto-merging** - NEVER merge after completion. Wait for user.
 
 10. **Hiding issues** - NEVER say "found N issues, fixing them" without showing WHAT the issues are. Display full issue list before fixing.
+
+11. **Backgrounding and polling** - NEVER run reviewer with `run_in_background: true` then poll the output file. This wastes main context - the exact thing we're trying to save. Let the Task block; the reviewer's work happens in isolated context. Blocking is correct.
 
 ---
 
