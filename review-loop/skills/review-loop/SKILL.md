@@ -3,7 +3,26 @@ name: review-loop
 description: Automated code review and fix loop with minimum 4 iterations, spawning subagents per issue to preserve context
 ---
 
-# ⚠️ CRITICAL: READ THIS FIRST ⚠️
+# ⚠️ STOP - EXECUTE THIS FIRST ⚠️
+
+## FIRST ACTION: Create Iteration TODOs NOW
+
+**Before doing ANYTHING else, call TodoWrite with exactly this:**
+
+```json
+{
+  "todos": [
+    {"content": "Iteration 1: Review and fix cycle", "status": "in_progress", "activeForm": "Running iteration 1"},
+    {"content": "Iteration 2: Review and fix cycle", "status": "pending", "activeForm": "Running iteration 2"},
+    {"content": "Iteration 3: Review and fix cycle", "status": "pending", "activeForm": "Running iteration 3"},
+    {"content": "Iteration 4: Review and fix cycle", "status": "pending", "activeForm": "Running iteration 4"}
+  ]
+}
+```
+
+**Do this NOW. Do not read further until you have created these TODOs.**
+
+---
 
 ## This is an AUTOMATED LOOP - Minimum 4 Iterations
 
@@ -21,32 +40,22 @@ description: Automated code review and fix loop with minimum 4 iterations, spawn
 2. **Do NOT ask "Should I proceed?"** - Just proceed.
 3. **Do NOT ask "Which issues should I address?"** - Address ALL of them.
 4. **Do NOT offer options** - This is automated, not interactive.
-5. **Do NOT create per-issue TODOs first** - Create iteration TODO first.
+5. **Do NOT create generic TODOs** - Only "Iteration N" TODOs at top level.
+6. **Do NOT skip creating iteration TODOs** - They are MANDATORY.
 
-## ✅ REQUIRED: Iteration TODO Structure
-
-**IMMEDIATELY after skill loads, create iteration TODOs:**
-
+**Wrong TODO structure:**
 ```
-TodoWrite([
-  { content: "Iteration 1: Review and fix cycle", status: "in_progress", activeForm: "Running iteration 1" },
-  { content: "Iteration 2: Review and fix cycle", status: "pending", activeForm: "Running iteration 2" },
-  { content: "Iteration 3: Review and fix cycle", status: "pending", activeForm: "Running iteration 3" },
-  { content: "Iteration 4: Review and fix cycle", status: "pending", activeForm: "Running iteration 4" }
-])
+☐ Spawn local-reviewer subagent     ← WRONG
+☐ Review findings                   ← WRONG
+☐ Fix issues                        ← WRONG
 ```
 
-**Create per-issue TODOs INSIDE each iteration, not before.**
-
-Example flow:
+**Correct TODO structure:**
 ```
-☐ Iteration 1: Review and fix cycle (in_progress)
-  → Review finds 5 issues
-  → Add sub-TODOs: "Fix [major]: issue 1", "Fix [major]: issue 2"...
-  → Fix each issue
-  → Mark Iteration 1 complete
-☐ Iteration 2: Review and fix cycle (now in_progress)
-  → ...
+☐ Iteration 1: Review and fix cycle  ← CORRECT
+☐ Iteration 2: Review and fix cycle  ← CORRECT
+☐ Iteration 3: Review and fix cycle  ← CORRECT
+☐ Iteration 4: Review and fix cycle  ← CORRECT
 ```
 
 ## ⛔ NEVER Background the Reviewer
