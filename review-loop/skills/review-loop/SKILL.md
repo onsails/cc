@@ -3,23 +3,17 @@ name: review-loop
 description: Automated code review and fix loop with minimum 4 iterations, spawning subagents per issue to preserve context
 ---
 
-# Review Loop
+# Review Loop - 4 Mandatory Passes
 
-Automated quality gate: review → fix → repeat until code passes (minimum 4 iterations).
-
-## Quick Start
-
-1. Determine target branch (PR base or nearest parent branch)
-2. Run 4+ iterations of: review → fix all issues → repeat
-3. Exit when iteration >= 4 AND no critical/major issues
+This skill runs exactly 4 review-fix passes. Each pass is a separate section below.
 
 ## Step 0: Determine Target Branch
 
 ```bash
-# First: check for PR
-gh pr view --json baseRefName 2>/dev/null && exit 0
+# Check for PR first
+gh pr view --json baseRefName 2>/dev/null
 
-# Fallback: find nearest parent branch
+# If no PR, find nearest parent branch
 current=$(git branch --show-current)
 for branch in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes); do
     [[ "$branch" == "$current" || "$branch" == "origin/$current" ]] && continue
@@ -29,64 +23,101 @@ for branch in $(git for-each-ref --format='%(refname:short)' refs/heads refs/rem
 done | sort -n | head -1 | cut -d' ' -f2
 ```
 
-## Main Loop
+Store as TARGET_BRANCH for all iterations.
 
-Repeat for each iteration (minimum 4):
+---
 
-### Phase 1: Review
+## Iteration 1: First Review Pass
 
-Generate output path and spawn reviewer:
-
+Generate unique output path:
 ```bash
-REVIEW_OUTPUT="/tmp/review-$(date +%s).md"
+REVIEW_OUTPUT_1="/tmp/review-iter1-$(date +%s).md"
 ```
 
+Spawn reviewer:
 ```
 Task(
   subagent_type = "review-loop:local-reviewer"
-  description = "Iteration N: Review"
-  prompt = """
-Review current branch.
-
-OUTPUT FILE: ${REVIEW_OUTPUT}
-TARGET BRANCH: ${TARGET_BRANCH}
-
-Write findings to OUTPUT FILE using Write tool.
-"""
+  description = "Iteration 1: Review"
+  prompt = "Review branch. OUTPUT FILE: ${REVIEW_OUTPUT_1}, TARGET BRANCH: ${TARGET_BRANCH}"
 )
 ```
 
-Read `${REVIEW_OUTPUT}` when Task completes.
+Read output. For each issue, spawn fix agent:
+```
+Task(subagent_type = "general-purpose", description = "Fix: <issue>", prompt = "Fix: <details>")
+```
 
-### Phase 2: Fix
+---
 
-For each issue, spawn a fix agent:
+## Iteration 2: Second Review Pass
 
+Generate unique output path:
+```bash
+REVIEW_OUTPUT_2="/tmp/review-iter2-$(date +%s).md"
+```
+
+Spawn reviewer:
 ```
 Task(
-  subagent_type = "general-purpose"
-  description = "Fix: <issue summary>"
-  prompt = """
-Fix this issue:
-- Issue: <description>
-- File: <path>:<line>
-- Severity: <level>
-
-Make minimal fix. Run tests. Do not fix other issues.
-"""
+  subagent_type = "review-loop:local-reviewer"
+  description = "Iteration 2: Review"
+  prompt = "Review branch. OUTPUT FILE: ${REVIEW_OUTPUT_2}, TARGET BRANCH: ${TARGET_BRANCH}"
 )
 ```
 
-### Phase 3: Check Exit
+Read output. For each issue, spawn fix agent.
 
-- If iteration >= 4 AND no critical/major issues → Exit
-- Otherwise → Continue to next iteration
+---
+
+## Iteration 3: Third Review Pass
+
+Generate unique output path:
+```bash
+REVIEW_OUTPUT_3="/tmp/review-iter3-$(date +%s).md"
+```
+
+Spawn reviewer:
+```
+Task(
+  subagent_type = "review-loop:local-reviewer"
+  description = "Iteration 3: Review"
+  prompt = "Review branch. OUTPUT FILE: ${REVIEW_OUTPUT_3}, TARGET BRANCH: ${TARGET_BRANCH}"
+)
+```
+
+Read output. For each issue, spawn fix agent.
+
+---
+
+## Iteration 4: Final Review Pass
+
+Generate unique output path:
+```bash
+REVIEW_OUTPUT_4="/tmp/review-iter4-$(date +%s).md"
+```
+
+Spawn reviewer:
+```
+Task(
+  subagent_type = "review-loop:local-reviewer"
+  description = "Iteration 4: Final Review"
+  prompt = "Review branch. OUTPUT FILE: ${REVIEW_OUTPUT_4}, TARGET BRANCH: ${TARGET_BRANCH}"
+)
+```
+
+Read output. Fix any remaining critical/major issues.
+
+If critical/major issues remain after iteration 4, continue with iteration 5, 6, etc. until clean.
+
+---
 
 ## Completion
 
-Commit all fixes:
-```
-fix: address code review issues (N iterations)
+After iteration 4+ with no critical/major issues:
+
+```bash
+git add -A && git commit -m "fix: address code review issues"
 ```
 
-Report results. Do NOT merge - wait for user.
+Report summary. Do NOT merge - wait for user.
