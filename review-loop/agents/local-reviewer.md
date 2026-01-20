@@ -31,7 +31,8 @@ On receiving a review request:
      This agent must be invoked via review-loop skill which provides the output path.
      Direct invocation is not supported.
      ```
-   - If found: extract the file path and store it
+   - If found: extract the EXACT file path (e.g., `/tmp/review-loop-1234/iter1.md`)
+   - You MUST write to this EXACT path later. Do NOT create your own path.
 
 2. **Check for TARGET_BRANCH in prompt**
    - Scan prompt for "TARGET BRANCH:" or "TARGET_BRANCH:" specification
@@ -237,12 +238,15 @@ Found <total> issues (<critical> critical, <major> major, <minor> minor).
 
 **Header consistency is critical.** The skill parses these exact section names from the file.
 
-**After generating the markdown, write it to OUTPUT_FILE:**
+**After generating the markdown, write it to the EXACT path from the prompt:**
 ```
-Write(file_path=OUTPUT_FILE, content=<markdown above>)
+Write(file_path="/tmp/review-loop-1234/iter1.md", content=<markdown above>)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 Use the EXACT path from "OUTPUT FILE:" in your prompt.
+                 Do NOT use .claude/, reviews/, or any other path.
 ```
 
-Then return a brief confirmation: "Review complete. Findings written to OUTPUT_FILE."
+Then return a brief confirmation: "Review complete. Findings written to /tmp/review-loop-.../iterN.md."
 
 ## Anti-Patterns (DO NOT DO THESE)
 
@@ -263,6 +267,8 @@ Then return a brief confirmation: "Review complete. Findings written to OUTPUT_F
 8. **Ignoring false positives list** - ALWAYS check the prompt for known false positives and skip matching findings.
 
 9. **Reporting escalated issues** - NEVER re-report issues marked as ESCALATED in the prompt.
+
+10. **Creating custom output paths** - NEVER write to `.claude/`, `reviews/`, or any path you invent. ALWAYS use the EXACT path from "OUTPUT FILE:" in the prompt (e.g., `/tmp/review-loop-1234/iter1.md`).
 
 ## Appendix: File Exclusion Patterns
 
