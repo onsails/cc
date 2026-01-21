@@ -1,13 +1,45 @@
 ---
 name: review-loop
-description: "ORCHESTRATOR: Run 4 review iterations, invoke /fix skill after each"
+description: "Use when code changes need multi-pass automated review before merge"
 ---
 
 # Review Loop
 
-Run 4 review iterations. After each review, invoke `/fix` skill to handle findings.
+Orchestrate 4+ review iterations, invoking `/fix` skill after each.
 
-**You are an orchestrator.** You dispatch reviewers and invoke skills. You do NOT fix code.
+## When to Use
+
+- Before merging feature branches
+- After significant code changes
+- When thorough automated review is needed
+- PR has no blocking review yet
+
+**Not for:** Quick fixes, documentation-only changes, already-reviewed code.
+
+## Process Flow
+
+```dot
+digraph review_loop {
+    rankdir=TB;
+
+    "Setup: REVIEW_DIR, TARGET_BRANCH, TODOs" [shape=box];
+    "Dispatch reviewer subagent" [shape=box];
+    "Invoke /fix skill" [shape=box];
+    "Mark iteration complete" [shape=box];
+    "Iteration >= 4?" [shape=diamond];
+    "Critical/major issues?" [shape=diamond];
+    "Commit and report" [shape=box];
+
+    "Setup: REVIEW_DIR, TARGET_BRANCH, TODOs" -> "Dispatch reviewer subagent";
+    "Dispatch reviewer subagent" -> "Invoke /fix skill";
+    "Invoke /fix skill" -> "Mark iteration complete";
+    "Mark iteration complete" -> "Iteration >= 4?";
+    "Iteration >= 4?" -> "Critical/major issues?" [label="yes"];
+    "Iteration >= 4?" -> "Dispatch reviewer subagent" [label="no"];
+    "Critical/major issues?" -> "Dispatch reviewer subagent" [label="yes"];
+    "Critical/major issues?" -> "Commit and report" [label="no"];
+}
+```
 
 ## Setup
 
@@ -19,8 +51,6 @@ TARGET_BRANCH=$(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || \
   git branch -a --contains HEAD^ --no-contains HEAD | head -1 | tr -d ' ')
 ```
 
-Create iteration TODOs:
-
 ```
 TodoWrite([
   {content: "Iteration 1: Review → Fix", status: "in_progress", activeForm: "Running iteration 1"},
@@ -30,39 +60,20 @@ TodoWrite([
 ])
 ```
 
-## For Each Iteration (1, 2, 3, 4)
+## Each Iteration
 
-### Step 1: Dispatch reviewer
-
+**Step 1:** Dispatch reviewer
 ```
-Task(
-  subagent_type: "review-loop:local-reviewer"
-  description: "Iteration N: Review"
-  prompt: "OUTPUT FILE: ${REVIEW_DIR}/iterN.md\nTARGET BRANCH: ${TARGET_BRANCH}"
-)
+Task(subagent_type: "review-loop:local-reviewer", description: "Iteration N: Review",
+     prompt: "OUTPUT FILE: ${REVIEW_DIR}/iterN.md\nTARGET BRANCH: ${TARGET_BRANCH}")
 ```
 
-### Step 2: Invoke fix skill
-
+**Step 2:** Invoke fix skill
 ```
 Skill(skill: "review-loop:fix", args: "${REVIEW_DIR}/iterN.md")
 ```
 
-The fix skill will:
-- Display findings table
-- Create fix TODOs
-- Dispatch fix subagents
-- Report summary
-
-### Step 3: Mark iteration complete
-
-Mark current iteration TODO as `completed`, next as `in_progress`.
-
-## Exit Condition
-
-After iteration 4:
-- If no critical/major issues in last review → proceed to Completion
-- If critical/major issues remain → continue iteration 5, 6, etc.
+**Step 3:** Mark iteration TODO `completed`, next `in_progress`.
 
 ## Completion
 
@@ -70,13 +81,11 @@ After iteration 4:
 git add -A && git commit -m "fix: address code review issues (N iterations)"
 ```
 
-Report summary. Do NOT merge - wait for user.
+Report summary. Do NOT merge.
 
 ## Red Flags
 
-**Never:**
-- Fix issues yourself (that's what /fix skill does)
-- Read code files (reviewer subagent does that)
-- Edit code files (fix subagent does that)
-- Skip iterations (must run at least 4)
-- Create fix TODOs (that's what /fix skill does)
+- Fix issues yourself → /fix skill does that
+- Read/edit code files → subagents do that
+- Skip iterations → must run at least 4
+- Create fix TODOs → /fix skill does that

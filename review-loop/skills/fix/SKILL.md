@@ -1,118 +1,70 @@
 ---
 name: fix
-description: "Process review findings: display table, create TODOs, dispatch fix subagents"
+description: "Use when review findings need fixing via subagents - invoked by review-loop after each iteration"
 ---
 
 # Fix Skill
 
-Process review findings and dispatch fix subagents. Invoked by review-loop after each review iteration.
+Process review findings and dispatch fix subagents.
 
-**You are an orchestrator.** You do NOT fix code yourself. You dispatch subagents.
+## When to Use
+
+- After review-loop dispatches reviewer
+- When review output file exists with findings
+- Invoked automatically by review-loop skill
+
+**Not for:** Manual fixes, direct code editing, non-review issues.
 
 ## Input
 
-Receives review output file path as argument: `/fix /tmp/review-loop-xxx/iter1.md`
+Receives review file path: `/fix /tmp/review-loop-xxx/iter1.md`
 
-If no argument provided, look for most recent review file in `/tmp/review-loop-*/`.
+If no argument, looks for most recent `/tmp/review-loop-*/iter*.md`.
 
 ## Process
 
-### Step 1: Read and parse findings
-
+**Step 1:** Read findings
 ```
 Read <review-file>
 ```
 
-Parse each finding for: severity, file:line, description.
-
-### Step 2: Display findings table
-
-Show ALL findings to user:
-
+**Step 2:** Display findings table
 ```
-## Findings
-
 | # | Severity | File:Line | Issue | Action |
 |---|----------|-----------|-------|--------|
 | 1 | critical | foo.rs:42 | SQL injection | FIX |
 | 2 | major    | bar.rs:15 | Race condition | FIX |
 | 3 | minor    | baz.rs:99 | Unused import | SKIP (trivial) |
-| 4 | minor    | qux.rs:10 | Missing log | FIX (important) |
-| 5 | suggestion | ... | Refactor idea | NOTE |
 ```
 
-**Triage rules:**
-- **Critical/Major**: FIX (unless FALSE POSITIVE)
-- **Minor**: FIX if important, SKIP if trivial
-- **Suggestion**: NOTE only
-- **FALSE POSITIVE**: SKIP
+**Triage:** Critical/Major → FIX. Minor → FIX if important. Suggestion → NOTE. FALSE POSITIVE → SKIP.
 
-### Step 3: Create TODOs for issues marked FIX
-
+**Step 3:** Create TODOs
 ```
 TodoWrite([
-  {content: "Dispatch subagent: Fix [major] Race condition in bar.rs", status: "pending", activeForm: "Dispatching fix subagent"},
-  {content: "Dispatch subagent: Fix [critical] SQL injection in foo.rs", status: "pending", activeForm: "Dispatching fix subagent"},
+  {content: "Dispatch subagent: Fix [severity] issue summary", status: "pending", activeForm: "Dispatching fix subagent"},
   ...
 ])
 ```
 
-### Step 4: Execute each TODO by dispatching subagent
+**Step 4:** Execute each TODO
 
-For each "Dispatch subagent" TODO:
-
-1. Mark TODO `in_progress`
-2. Dispatch subagent using `./fix-prompt.md` template:
-
+Mark `in_progress`, dispatch:
 ```
-Task(
-  subagent_type: "general-purpose"
-  description: "Fix: [SHORT_SUMMARY]"
-  prompt: |
-    You are fixing a code review issue.
-
-    ## Issue Details
-    **Title:** [ISSUE_TITLE]
-    **File:** [FILE_PATH]:[LINE_NUMBER]
-    **Severity:** [SEVERITY]
-    **Description:** [FULL_DESCRIPTION]
-
-    ## Your Job
-    1. Read the file at the specified location
-    2. Understand the issue in context
-    3. Make the MINIMAL fix to resolve this specific issue
-    4. Run relevant tests - fix any failures YOUR change caused
-    5. Run linter/clippy if applicable
-    6. Verify the fix compiles
-
-    ## Scope Rules
-    **In scope:** The specific issue, test failures from your fix, linter errors in code you touched
-    **Out of scope:** Other issues, refactoring, adding comments
-
-    ## Report Format
-    - What you changed (file:line)
-    - How you fixed it (1-2 sentences)
-    - Test results
-)
+Task(subagent_type: "general-purpose", description: "Fix: [summary]",
+     prompt: "Fix [ISSUE] in [FILE]:[LINE]. Minimal fix, run tests, verify compiles.")
 ```
+Mark `completed` after Task returns.
 
-3. Mark TODO `completed` after Task returns
-
-### Step 5: Report summary
-
+**Step 5:** Report summary
 ```
 ## Fix Summary
-
-- Issues found: N
-- Issues fixed: M
-- Skipped: K (with reasons)
+- Found: N, Fixed: M, Skipped: K
 ```
 
 ## Red Flags
 
-**Never:**
-- Fix issues yourself (dispatch subagents)
-- Read code files to understand issues (subagent does that)
-- Edit code files (subagent does that)
+- Fix issues yourself → dispatch subagents
+- Read/edit code files → subagents do that
 - Skip critical/major issues
-- Dispatch multiple subagents in parallel (sequential only)
+- Parallel subagents → sequential only
