@@ -5,56 +5,54 @@ description: "Use when review findings need fixing via subagents - invoked by re
 
 # Fix Skill
 
-Process review findings and dispatch fix subagents.
+**You DISPATCH subagents to fix issues. You do NOT fix them yourself.**
+
+**Violating the letter of these rules is violating the spirit.**
 
 ## When to Use
 
-- After review-loop dispatches reviewer
+- Invoked by review-loop after each review iteration
 - When review output file exists with findings
-- Invoked automatically by review-loop skill
 
-**Not for:** Manual fixes, direct code editing, non-review issues.
+**Not for:** Manual fixes, direct code editing.
 
-## Input
+## The Iron Rules
 
-Receives review file path: `/fix /tmp/review-loop-xxx/iter1.md`
+1. **NEVER use Edit tool** - subagents fix code, not you
+2. **NEVER read code files** - only read the review findings file
+3. **DISPATCH sequentially** - one subagent at a time, wait for completion
+4. **FIX critical/major** - skip only false positives or trivial minors
 
-If no argument, looks for most recent `/tmp/review-loop-*/iter*.md`.
+## Process (EXACT sequence)
 
-## Process
-
-**Step 1:** Read findings
+**Step 1:** Read ONLY the review findings file
 ```
 Read <review-file>
 ```
 
-**Step 2:** Display findings table
+**Step 2:** Display findings table to user
 ```
 | # | Severity | File:Line | Issue | Action |
 |---|----------|-----------|-------|--------|
 | 1 | critical | foo.rs:42 | SQL injection | FIX |
 | 2 | major    | bar.rs:15 | Race condition | FIX |
-| 3 | minor    | baz.rs:99 | Unused import | SKIP (trivial) |
+| 3 | minor    | baz.rs:99 | Unused import | SKIP |
 ```
 
-**Triage:** Critical/Major → FIX. Minor → FIX if important. Suggestion → NOTE. FALSE POSITIVE → SKIP.
-
-**Step 3:** Create TODOs
+**Step 3:** Create one TODO per issue to fix
 ```
 TodoWrite([
-  {content: "Dispatch subagent: Fix [severity] issue summary", status: "pending", activeForm: "Dispatching fix subagent"},
-  ...
+  {content: "Dispatch: Fix critical SQL injection in foo.rs:42", status: "pending", activeForm: "Dispatching subagent"},
+  {content: "Dispatch: Fix major race condition in bar.rs:15", status: "pending", activeForm: "Dispatching subagent"},
 ])
 ```
 
-**Step 4:** Execute each TODO
-
-Mark `in_progress`, dispatch:
+**Step 4:** For EACH TODO, mark `in_progress` then dispatch:
 ```
 Task(subagent_type: "general-purpose", description: "Fix: [summary]",
-     prompt: "Fix [ISSUE] in [FILE]:[LINE]. Minimal fix, run tests, verify compiles.")
+     prompt: "Fix [ISSUE] in [FILE]:[LINE]. Minimal change. Run tests. Verify compiles.")
 ```
-Mark `completed` after Task returns.
+WAIT for Task to complete. Mark TODO `completed`. Next TODO.
 
 **Step 5:** Report summary
 ```
@@ -62,9 +60,26 @@ Mark `completed` after Task returns.
 - Found: N, Fixed: M, Skipped: K
 ```
 
-## Red Flags
+## Rationalization Table
 
-- Fix issues yourself → dispatch subagents
-- Read/edit code files → subagents do that
-- Skip critical/major issues
-- Parallel subagents → sequential only
+| Excuse | Reality |
+|--------|---------|
+| "I'll just fix this quickly" | NO. Dispatch subagent. |
+| "This is a one-line fix" | NO. Dispatch subagent. |
+| "Let me check the code first" | NO. Only read findings file. Subagent checks code. |
+| "I can be more efficient" | NO. Follow the process exactly. |
+| "Running fixes in parallel" | NO. Sequential only. |
+| "This isn't a real issue" | Mark SKIP in table. Don't decide silently. |
+
+## Red Flags - STOP IMMEDIATELY
+
+If you catch yourself doing ANY of these, STOP:
+
+- Using Edit tool
+- Using Read on code files (not findings file)
+- Fixing issues directly
+- Running subagents in parallel
+- Skipping issues without marking SKIP in table
+- "Adapting" the process
+
+**All of these mean: You are violating the skill. Stop and follow it.**
