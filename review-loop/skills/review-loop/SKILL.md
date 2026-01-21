@@ -43,22 +43,13 @@ digraph review_loop {
 
 ## Setup
 
-```bash
-REVIEW_DIR="/tmp/review-loop-$(date +%s)-$$"
-mkdir -p "$REVIEW_DIR"
+Run the setup script to create session directory and detect target branch:
 
-# Target branch: PR base OR nearest parent branch (by commit distance)
-TARGET_BRANCH=$(gh pr view --json baseRefName -q .baseRefName 2>/dev/null)
-if [ -z "$TARGET_BRANCH" ]; then
-  current=$(git branch --show-current)
-  TARGET_BRANCH=$(for branch in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes/origin); do
-    [[ "$branch" == "$current" || "$branch" == "origin/$current" || "$branch" == "HEAD" ]] && continue
-    base=$(git merge-base HEAD "$branch" 2>/dev/null) || continue
-    echo "$(git rev-list --count "$base..HEAD") $branch"
-  done | sort -n | head -1 | cut -d' ' -f2-)
-fi
-echo "Target branch: $TARGET_BRANCH"
+```bash
+eval "$(~/.claude/plugins/cache/onsails-cc/review-loop/*/skills/review-loop/setup.sh)"
 ```
+
+This sets `$REVIEW_DIR` and `$TARGET_BRANCH` environment variables.
 
 ```
 TodoWrite([
