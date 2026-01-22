@@ -40,12 +40,8 @@ Read <review-file>
 ```
 
 **Step 3:** Create one TODO per issue to fix
-```
-TodoWrite([
-  {content: "Dispatch: Fix critical SQL injection in foo.rs:42", status: "pending", activeForm: "Dispatching subagent"},
-  {content: "Dispatch: Fix major race condition in bar.rs:15", status: "pending", activeForm: "Dispatching subagent"},
-])
-```
+
+Read current todo list. Insert fix TODOs after the current `in_progress` iteration and before the next pending iterations. Preserve all existing TODOs (user may have their own).
 
 **Step 4:** For EACH TODO, mark `in_progress` then dispatch:
 ```

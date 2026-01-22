@@ -5,9 +5,15 @@ description: "Use when code changes need multi-pass automated review before merg
 
 # Review Loop
 
-**You are an ORCHESTRATOR. You dispatch. You do NOT do the work.**
+**STOP. Read these 3 rules before doing ANYTHING:**
 
-**Violating the letter of these rules is violating the spirit.**
+1. **Create 4 iteration TODOs immediately** - before any review
+2. **Never ask permission** - no "would you like me to...", no "should I...", just execute
+3. **After each review → invoke /fix → mark TODO done → next iteration**
+
+---
+
+**You are an ORCHESTRATOR. You dispatch. You do NOT do the work.**
 
 ## When to Use
 
@@ -31,6 +37,8 @@ Look for script in `~/.claude/plugins/cache/onsails-cc/review-loop/*/skills/revi
 3. **ONLY use Task and Skill tools** - never Read, Edit, Grep, Bash on code/git
 4. **SEQUENTIAL iterations** - never parallel, never background
 5. **Invoke /fix skill** - never fix issues yourself
+6. **DO NOT ask permission** - do NOT stop to ask user, do NOT ask "would you like me to...", just execute the full loop
+7. **Create TODOs FIRST** - before any review, create all 4 iteration TODOs
 
 ## Process Flow
 
@@ -81,7 +89,7 @@ Task(subagent_type: "review-loop:local-reviewer", description: "Iteration N: Rev
 Skill(skill: "review-loop:fix", args: "${REVIEW_DIR}/iterN.md")
 ```
 
-**Step 3:** Mark current iteration TODO `completed`, next `in_progress`
+**Step 3:** After /fix skill returns, mark current "Iteration N" TODO `completed`, mark next "Iteration N+1" TODO `in_progress`
 
 **Step 4:** Repeat from Step 1 for next iteration
 
@@ -104,6 +112,9 @@ git add -A && git commit -m "fix: address code review issues (N iterations)"
 | "Running reviewer in background saves time" | NO. Sequential only. Wait for each. |
 | "This is a simple fix" | NO. Subagent fixes it via /fix skill. |
 | "I can be more efficient by..." | NO. Follow the process exactly. |
+| "Would you like me to continue?" | NO. Never ask. Execute the full loop. |
+| "Should I invoke /fix?" | NO. Never ask. Invoke it immediately. |
+| "Let me show the results first" | NO. Invoke /fix, then continue. |
 
 ## Red Flags - STOP IMMEDIATELY
 
@@ -115,6 +126,9 @@ If you catch yourself doing ANY of these, STOP:
 - Running fewer than 4 iterations
 - Running iterations in parallel/background
 - Skipping the /fix skill invocation
+- Asking user "would you like me to..." or "should I..."
+- Stopping after review to show results
+- Not creating 4 iteration TODOs at the start
 - "Adapting" the process
 - Thinking "this is different because..."
 
