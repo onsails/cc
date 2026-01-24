@@ -1,6 +1,7 @@
 # review-loop
 
 Automated code review and fix loop with per-issue subagents.
+<img width="804" height="699" alt="Screenshot 2026-01-24 at 15 17 56" src="https://github.com/user-attachments/assets/db1bfd12-a76f-4696-8804-2e48da2a5f57" />
 
 ## Why a Loop?
 
