@@ -8,6 +8,7 @@ Claude Code plugins for power users.
 
 Automated code review and fix loop with per-issue subagents.
 
+- Optional code-simplifier pre-pass (install from [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official))
 - Runs minimum 4 review iterations until stable
 - Spawns isolated Task agent per issue (preserves main context)
 - Auto-discovers project standards: CLAUDE.md, CI configs, linter rules
