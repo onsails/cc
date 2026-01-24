@@ -14,6 +14,8 @@ Automated code review and fix loop with per-issue subagents.
 - Auto-discovers project standards: CLAUDE.md, CI configs, linter rules
 - Smart target branch detection via PR or git history
 
+<img width="804" height="699" alt="Screenshot 2026-01-24 at 15 17 56" src="https://github.com/user-attachments/assets/db1bfd12-a76f-4696-8804-2e48da2a5f57" />
+
 [Full documentation →](./review-loop/README.md)
 
 ### rust-dev
