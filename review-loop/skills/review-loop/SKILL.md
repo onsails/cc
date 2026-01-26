@@ -116,7 +116,18 @@ TaskUpdate(taskId: SIMPLIFY, status: "completed")
    ```
 3. Invoke fix: `Skill(skill: "review-loop:fix", args: "${REVIEW_DIR}/iterN.md")`
 4. `TaskUpdate(taskId: CURRENT, status: "completed")`
-5. Repeat
+5. **ALWAYS continue to next iteration** - even if no issues found or all were false-positives
+
+**WHY 4+ iterations are mandatory:**
+- Reviewers find different issues on different passes
+- Fixes may introduce new problems
+- Context builds across iterations
+- First pass often misses subtle issues
+
+**NEVER stop early because:**
+- "No issues found" → Reviewer may find different issues next pass
+- "All false-positives" → Next iteration reviews with fresh perspective
+- "Code looks clean" → Run all iterations anyway
 
 ## Step 4: Completion
 
@@ -138,6 +149,9 @@ git add -A && git commit -m "fix: address review issues (N iterations)"
 | "I'll fix this quickly" | NO. /fix skill does fixes. |
 | "Would you like me to..." | NO. Never ask. Execute. |
 | "Skip code-simplifier, it's optional" | Check availability first. If available, run it. |
+| "No issues found, stopping early" | NO. Reviewers find different issues each pass. Run all 4. |
+| "All were false-positives, done" | NO. Next iteration may find real issues. Continue. |
+| "Code is clean after iteration 1" | NO. Run all 4 iterations. First pass misses subtle issues. |
 
 ## Red Flags - STOP IMMEDIATELY
 
@@ -148,8 +162,10 @@ If you catch yourself:
 - Fixing issues directly → STOP
 - Asking permission → STOP
 - Skipping code-simplifier without checking availability → STOP
+- Stopping before iteration 4 because "no issues" → STOP
+- Skipping iterations because "all false-positives" → STOP
 
-**All mean: You skipped TaskCreate. Go back to MANDATORY FIRST ACTION.**
+**All mean: You violated the skill. Go back and follow it exactly.**
 
 ## Iron Rules
 

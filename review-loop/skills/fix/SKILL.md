@@ -84,6 +84,8 @@ TaskUpdate(taskId: "${fix_id}", status: "completed")
 - Next iteration unblocked: [yes/no]
 ```
 
+**If zero issues to fix:** Report "No issues requiring fixes. Proceeding to next iteration." The review-loop will continue - this is normal and expected. Multiple iterations catch different issues.
+
 ## Rationalization Table
 
 | Excuse | Reality |
@@ -96,6 +98,7 @@ TaskUpdate(taskId: "${fix_id}", status: "completed")
 | "This isn't a real issue" | Mark SKIP in table. Don't decide silently. |
 | "I'll skip updating blockedBy" | NO. Next iteration MUST be blocked by all fix tasks. |
 | "No NEXT_ITER_TASK_ID provided" | ERROR. Review-loop must provide it. Report failure. |
+| "No issues, loop should stop" | NO. Report zero issues and return. Review-loop decides iteration count. |
 
 ## Red Flags - STOP IMMEDIATELY
 
