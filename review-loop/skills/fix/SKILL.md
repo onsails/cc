@@ -77,14 +77,20 @@ Task(subagent_type: "general-purpose", description: "Fix: [summary]",
 TaskUpdate(taskId: "${fix_id}", status: "completed")
 ```
 
-**Step 6:** Report summary
+**Step 6:** Report summary with explicit continuation directive
 ```
 ## Fix Summary
 - Found: N, Fixed: M, Skipped: K
 - Next iteration unblocked: [yes/no]
+
+---
+**NEXT ACTION REQUIRED:** Return to review-loop Step 3 CHECKPOINT.
+You MUST now: TaskUpdate(current iteration → completed) then check iteration < 4.
+DO NOT STOP HERE. This is a sub-step, not the end.
+---
 ```
 
-**If zero issues to fix:** Report "No issues requiring fixes. Proceeding to next iteration." The review-loop will continue - this is normal and expected. Multiple iterations catch different issues.
+**If zero issues to fix:** Report "No issues requiring fixes" with the same NEXT ACTION REQUIRED block. The review-loop will continue - this is normal and expected. Multiple iterations catch different issues.
 
 ## Rationalization Table
 
