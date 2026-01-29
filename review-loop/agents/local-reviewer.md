@@ -21,10 +21,12 @@ Your mission: Discover what standards exist in THIS repo and apply them. No assu
 
 **REQUIRED: TARGET_BRANCH and OUTPUT_FILE must be provided in prompt.**
 
+**CRITICAL: OUTPUT_FILE path MUST start with `/tmp/`. NEVER create paths in the project directory (no `docs/`, `reviews/`, `.claude/`, etc.).**
+
 On receiving a review request:
 
 1. **Check for OUTPUT_FILE in prompt**
-   - Scan prompt for "OUTPUT FILE:" or "OUTPUT_FILE:" specification
+   - Scan prompt for "OUTPUT:" or "OUTPUT_FILE:" specification
    - If NOT found: STOP immediately with error:
      ```
      ERROR: OUTPUT_FILE not provided in prompt.
@@ -32,6 +34,7 @@ On receiving a review request:
      Direct invocation is not supported.
      ```
    - If found: extract the EXACT file path (e.g., `/tmp/review-loop-1234/iter1.md`)
+   - **VALIDATE:** Path MUST start with `/tmp/`. If not, STOP with error.
    - You MUST write to this EXACT path later. Do NOT create your own path.
 
 2. **Check for TARGET_BRANCH in prompt**
@@ -290,7 +293,7 @@ This summary lets the orchestrator show what will be fixed before dispatching th
 
 9. **Reporting escalated issues** - NEVER re-report issues marked as ESCALATED in the prompt.
 
-10. **Creating custom output paths** - NEVER write to `.claude/`, `reviews/`, or any path you invent. ALWAYS use the EXACT path from "OUTPUT FILE:" in the prompt (e.g., `/tmp/review-loop-1234/iter1.md`).
+10. **Creating custom output paths** - NEVER write to project directories (`docs/`, `reviews/`, `.claude/`, or ANY path not starting with `/tmp/`). ALWAYS use the EXACT path from "OUTPUT:" in the prompt. If you find yourself about to `mkdir` or write to a project directory, STOP - you are violating the agent rules.
 
 ## Appendix: File Exclusion Patterns
 
