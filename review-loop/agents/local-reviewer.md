@@ -246,7 +246,29 @@ Write(file_path="/tmp/review-loop-1234/iter1.md", content=<markdown above>)
                  Do NOT use .claude/, reviews/, or any other path.
 ```
 
-Then return a brief confirmation: "Review complete. Findings written to /tmp/review-loop-.../iterN.md."
+Then return a structured summary (orchestrator displays this before dispatching fix agent):
+
+```
+## Review Complete
+
+**Output:** /tmp/review-loop-.../iterN.md
+
+### Findings Summary
+| Severity | Count |
+|----------|-------|
+| Critical | N |
+| Major | N |
+| Minor | N |
+
+### Issues to Fix
+1. **[critical]** `file.rs:42` - Brief description
+2. **[major]** `other.rs:88` - Brief description
+...
+
+(List all critical and major issues. Omit minor/suggestions for brevity.)
+```
+
+This summary lets the orchestrator show what will be fixed before dispatching the fix agent.
 
 ## Anti-Patterns (DO NOT DO THESE)
 
@@ -262,7 +284,7 @@ Then return a brief confirmation: "Review complete. Findings written to /tmp/rev
 
 6. **Interacting with user** - NEVER ask questions or wait for input. Write findings to file and exit. The skill handles user interaction.
 
-7. **Returning findings directly** - NEVER return the full findings in your response. ALWAYS write to OUTPUT_FILE using the Write tool. Only return a brief confirmation.
+7. **Returning full findings** - NEVER return the full detailed findings in your response. ALWAYS write details to OUTPUT_FILE. Return only the structured summary (counts + critical/major list).
 
 8. **Ignoring false positives list** - ALWAYS check the prompt for known false positives and skip matching findings.
 

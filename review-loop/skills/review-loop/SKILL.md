@@ -120,6 +120,7 @@ TaskUpdate(taskId: SIMPLIFY, status: "completed")
    Task(subagent_type: "review-loop:local-reviewer",
         prompt: "OUTPUT: ${REVIEW_DIR}/iterN.md\nTARGET: ${TARGET_BRANCH}")
    ```
+   **Reviewer returns a summary.** Display it to user - this shows what will be fixed.
 5. Dispatch fix agent:
    ```
    Task(subagent_type: "review-loop:fix",
