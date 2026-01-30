@@ -157,9 +157,23 @@ Is ${metadata.iteration} < ${metadata.of}?
 ## Step 4: Completion
 
 After 4+ iterations with no critical/major:
-```bash
-git add -A && git commit -m "fix: address review issues (N iterations)"
-```
+
+1. **Mark final iteration task completed:**
+   ```
+   TaskUpdate(taskId: ITER4, status: "completed")
+   ```
+
+2. **Verify all tasks completed:**
+   ```
+   TaskList  → All iteration tasks should show "completed"
+   ```
+
+3. **Commit changes:**
+   ```bash
+   git add -A && git commit -m "fix: address review issues (N iterations)"
+   ```
+
+**Do NOT leave tasks in pending/in_progress state.**
 
 ---
 

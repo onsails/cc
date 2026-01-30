@@ -73,18 +73,30 @@ TaskUpdate(taskId: NEXT_ITER_TASK_ID, addBlockedBy: [all_fix_task_ids])
 
 **CRITICAL: You MUST dispatch a separate subagent for EACH fix task.**
 
-For EACH fix task, in sequence:
-```
-TaskUpdate(taskId: fix_id, status: "in_progress")
+**USE THE `Task` TOOL, NOT THE `Skill` TOOL.**
 
+For EACH fix task (one at a time, sequential):
+
+```python
+# Fix 1
+TaskUpdate(taskId: "20", status: "in_progress")
 Task(subagent_type: "general-purpose",
-     description: "Fix: [summary]",
-     prompt: "Fix [ISSUE] in [FILE]:[LINE].
-              Minimal change only. Run tests. Verify compiles.
-              Do NOT fix other issues you notice.")
+     description: "Fix: correlation ID format",
+     prompt: "Fix [specific issue 1] in [file1]:[line]. Minimal change. Run tests.")
+TaskUpdate(taskId: "20", status: "completed")
 
-TaskUpdate(taskId: fix_id, status: "completed")
+# Fix 2 (AFTER fix 1 completes)
+TaskUpdate(taskId: "21", status: "in_progress")
+Task(subagent_type: "general-purpose",
+     description: "Fix: debug_assert violation",
+     prompt: "Fix [specific issue 2] in [file2]:[line]. Minimal change. Run tests.")
+TaskUpdate(taskId: "21", status: "completed")
+
+# Fix 3 (AFTER fix 2 completes)
+# ... and so on
 ```
+
+**Each Task call = ONE fix. Do NOT batch multiple fixes into one prompt.**
 
 **Wait for each subagent to complete before dispatching next.**
 
@@ -102,13 +114,15 @@ TaskUpdate(taskId: fix_id, status: "completed")
 
 | Excuse | Reality |
 |--------|---------|
-| "I can fix this quickly myself" | NO. Dispatch subagent. That's the rule. |
-| "It's just a one-line change" | NO. Dispatch subagent. Size doesn't matter. |
-| "Subagent is overkill for this" | NO. Dispatch subagent. Always. |
-| "I'll be more efficient" | NO. Dispatch subagent. Efficiency isn't the goal. |
-| "I already know what to change" | NO. Dispatch subagent. Knowing doesn't mean doing. |
-| "Let me just look at the code" | NO. Only read the findings file. Subagent reads code. |
-| "I can batch these fixes together" | NO. One subagent per fix. Sequential. |
+| "I can fix this quickly myself" | NO. Dispatch subagent via Task tool. |
+| "It's just a one-line change" | NO. Dispatch subagent via Task tool. |
+| "Subagent is overkill for this" | NO. Dispatch subagent via Task tool. Always. |
+| "I'll be more efficient" | NO. One Task per fix. Efficiency isn't the goal. |
+| "I already know what to change" | NO. Dispatch subagent. You don't touch code. |
+| "Let me just look at the code" | NO. Only read findings file. Subagent reads code. |
+| "I can batch these fixes together" | NO. One Task call per fix. Never batch. |
+| "I'll use Skill tool" | NO. Use Task tool with subagent_type. |
+| "I'll pass all fixes to one subagent" | NO. Separate Task call for EACH fix. |
 
 ## Red Flags - STOP IMMEDIATELY
 
@@ -116,9 +130,10 @@ If you catch yourself doing ANY of these:
 
 - Using Edit tool
 - Using Write tool on a code file
+- Using Skill tool instead of Task tool
+- Passing multiple fixes to one Task call
 - Reading code files (not the findings file)
-- Fixing multiple issues in one subagent dispatch
-- Batching fixes together
+- Batching fixes together in one prompt
 - "Just checking" the code before dispatching
 
 **All of these mean: You are violating the agent rules. STOP.**
@@ -127,18 +142,23 @@ If you catch yourself doing ANY of these:
 
 Correct execution shows this pattern:
 ```
-Task(subagent_type: "general-purpose", prompt: "Fix issue 1...")
+Task(subagent_type: "general-purpose", prompt: "Fix issue 1 only...")
   → subagent completes
-Task(subagent_type: "general-purpose", prompt: "Fix issue 2...")
+Task(subagent_type: "general-purpose", prompt: "Fix issue 2 only...")
   → subagent completes
-Task(subagent_type: "general-purpose", prompt: "Fix issue 3...")
+Task(subagent_type: "general-purpose", prompt: "Fix issue 3 only...")
   → subagent completes
 ```
 
-NOT this:
+**WRONG patterns:**
 ```
 Edit(file_path: "...", ...)   ← WRONG - you edited directly
-Edit(file_path: "...", ...)   ← WRONG - you edited directly
+```
+```
+Skill(skill: "general-purpose", ...)   ← WRONG - wrong tool
+```
+```
+Task(prompt: "Fix issues 1, 2, and 3...")   ← WRONG - batched fixes
 ```
 
-**Every fix = one Task dispatch. No exceptions.**
+**Every fix = one separate Task dispatch. No exceptions.**
