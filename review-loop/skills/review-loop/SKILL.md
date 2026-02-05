@@ -72,7 +72,8 @@ digraph review_loop {
     "TaskList → find unblocked" [shape=box];
     "TaskGet → read iteration metadata" [shape=box];
     "Dispatch reviewer" [shape=box];
-    "Dispatch fix agent" [shape=box];
+    "Read findings + triage" [shape=box];
+    "Dispatch fix subagent per issue" [shape=box];
     "CHECKPOINT" [shape=doubleoctagon, style=bold, color=red];
     "TaskUpdate completed" [shape=box];
     "iteration < of?" [shape=diamond];
@@ -85,8 +86,9 @@ digraph review_loop {
     "Dispatch code-simplifier" -> "TaskList → find unblocked";
     "TaskList → find unblocked" -> "TaskGet → read iteration metadata";
     "TaskGet → read iteration metadata" -> "Dispatch reviewer";
-    "Dispatch reviewer" -> "Dispatch fix agent";
-    "Dispatch fix agent" -> "CHECKPOINT" [label="agent returns here"];
+    "Dispatch reviewer" -> "Read findings + triage";
+    "Read findings + triage" -> "Dispatch fix subagent per issue";
+    "Dispatch fix subagent per issue" -> "CHECKPOINT";
     "CHECKPOINT" -> "TaskUpdate completed";
     "TaskUpdate completed" -> "iteration < of?";
     "iteration < of?" -> "TaskList → find unblocked" [label="yes, continue"];
@@ -120,17 +122,53 @@ TaskUpdate(taskId: SIMPLIFY, status: "completed")
    Task(subagent_type: "review-loop:local-reviewer",
         prompt: "OUTPUT: ${REVIEW_DIR}/iterN.md\nTARGET: ${TARGET_BRANCH}")
    ```
-   **Reviewer returns a summary.** Display it to user - this shows what will be fixed.
-5. Dispatch fix agent:
+   **Reviewer returns a summary.** Display it to user.
+5. **Read findings and triage (YOU do this, not a subagent):**
    ```
-   Task(subagent_type: "review-loop:fix",
-        prompt: "REVIEW_FILE: ${REVIEW_DIR}/iterN.md\nNEXT_ITER_TASK_ID: ${next_iter_task_id}")
+   Read(file_path: "${REVIEW_DIR}/iterN.md")
    ```
-6. `TaskUpdate(taskId: CURRENT, status: "completed")`
+   Parse the `## Findings` section. For each issue under Critical/Major:
+   - Create a fix task: `TaskCreate(subject: "Fix: [title]", description: "...", activeForm: "Fixing [title]")`
+   - Block next iteration: `TaskUpdate(taskId: NEXT_ITER, addBlockedBy: [fix_task_ids])`
 
-### CHECKPOINT (after fix agent returns)
+   Display triage table:
+   ```
+   | # | Severity | File:Line | Issue | Action |
+   |---|----------|-----------|-------|--------|
+   | 1 | critical | foo.rs:42 | SQL injection | FIX |
+   | 2 | major    | bar.rs:15 | Race condition | FIX |
+   | 3 | minor    | baz.rs:99 | Unused import | SKIP |
+   ```
 
-**STOP HERE. The fix agent has returned. You MUST now check iteration progress:**
+   **Skip rules:** Skip minor/suggestion severity. Skip issues that are clearly false positives.
+
+6. **Dispatch ONE fix subagent per issue (YOU dispatch these directly):**
+
+   For each fix task, sequentially:
+   ```
+   TaskUpdate(taskId: FIX_TASK, status: "in_progress")
+   Task(subagent_type: "general-purpose",
+        description: "Fix: [issue title]",
+        prompt: "Fix this specific issue:
+
+   File: [file]:[line]
+   Issue: [description]
+   Severity: [severity]
+
+   Make minimal changes to fix ONLY this issue.
+   Do not fix other issues. Do not refactor surrounding code.
+   Run relevant tests after fixing if test infrastructure exists.")
+   TaskUpdate(taskId: FIX_TASK, status: "completed")
+   ```
+
+   **Each Task call = ONE fix. Never batch multiple fixes into one prompt.**
+   **Wait for each subagent to complete before dispatching next.**
+
+7. `TaskUpdate(taskId: CURRENT, status: "completed")`
+
+### CHECKPOINT (after all fixes dispatched)
+
+**STOP HERE. All fix subagents have completed. You MUST now check iteration progress:**
 
 ```
 Current iteration: ${metadata.iteration}
@@ -141,7 +179,7 @@ Is ${metadata.iteration} < ${metadata.of}?
   NO  → Go to Step 4 (Completion)
 ```
 
-**DO NOT STOP after fix agent returns.** The fix agent is a sub-step, not the end of the loop.
+**DO NOT STOP after fixes complete.** Fixing is a sub-step, not the end of the loop.
 
 **WHY 4+ iterations are mandatory:**
 - Reviewers find different issues on different passes
@@ -185,14 +223,15 @@ After 4+ iterations with no critical/major:
 | "Let me run setup first" | NO. TaskCreate comes before setup.sh |
 | "I'll create tasks after starting" | NO. Tasks FIRST, always. |
 | "Two iterations enough" | NO. Minimum 4. |
-| "I'll fix this quickly" | NO. Fix agent does fixes. |
+| "I'll fix this quickly" | NO. Dispatch a fix subagent per issue. |
+| "I'll batch all fixes in one subagent" | NO. One Task per fix. Never batch. |
+| "I'll dispatch fix coordinator" | NO. YOU triage and dispatch fix subagents directly. |
 | "Would you like me to..." | NO. Never ask. Execute. |
 | "Skip code-simplifier, it's optional" | Check availability first. If available, run it. |
 | "No issues found, stopping early" | NO. Reviewers find different issues each pass. Run all 4. |
 | "All were false-positives, done" | NO. Next iteration may find real issues. Continue. |
 | "Code is clean after iteration 1" | NO. Run all 4 iterations. First pass misses subtle issues. |
-| "Fix agent returned, I'm done" | NO. Fix agent is a sub-step. Go to CHECKPOINT, check iteration count. |
-| "Fix summary looks complete" | NO. Summary is the agent's output. You're still in Step 3 of review-loop. |
+| "Fixes done, I'm done" | NO. Fixing is a sub-step. Go to CHECKPOINT, check iteration count. |
 
 ## Red Flags - STOP IMMEDIATELY
 
@@ -200,13 +239,14 @@ If you catch yourself:
 - Dispatching reviewer without tasks created → STOP
 - Running setup.sh as first action → STOP
 - Using Read/Edit/Grep on code → STOP
-- Fixing issues directly → STOP
+- Fixing issues directly (Edit/Write on code) → STOP
+- Batching multiple fixes into one subagent → STOP
 - Asking permission → STOP
 - Skipping code-simplifier without checking availability → STOP
 - Stopping before iteration 4 because "no issues" → STOP
 - Skipping iterations because "all false-positives" → STOP
-- **Ending response after fix agent returns** → STOP (go to CHECKPOINT)
-- **Not checking metadata.iteration after fix agent** → STOP (read the task, check the count)
+- **Ending response after fixes complete** → STOP (go to CHECKPOINT)
+- **Not checking metadata.iteration after fixes** → STOP (read the task, check the count)
 
 **All mean: You violated the skill. Go back and follow it exactly.**
 
@@ -217,5 +257,6 @@ If you catch yourself:
 3. MINIMUM 4 review iterations
 4. ONLY Task tool on code (dispatch subagents)
 5. SEQUENTIAL iterations
-6. Fix agent does fixes, not you
-7. Never ask permission
+6. ONE fix subagent per issue — never batch
+7. YOU read findings and triage — no intermediary agent
+8. Never ask permission
