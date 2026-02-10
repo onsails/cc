@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# Capture repository path (current working directory)
+REPO_PATH="$(pwd)"
+
 # Create unique session directory
 REVIEW_DIR="/tmp/review-loop-$(date +%s)-$$"
 mkdir -p "$REVIEW_DIR"
@@ -42,9 +45,11 @@ if [ -z "$TARGET_BRANCH" ]; then
 fi
 
 # Output for eval
+echo "export REPO_PATH='$REPO_PATH'"
 echo "export REVIEW_DIR='$REVIEW_DIR'"
 echo "export TARGET_BRANCH='$TARGET_BRANCH'"
 
 # Also print human-readable
+>&2 echo "Repository: $REPO_PATH"
 >&2 echo "Review session: $REVIEW_DIR"
 >&2 echo "Target branch: $TARGET_BRANCH"

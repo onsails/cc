@@ -19,13 +19,19 @@ Your mission: Discover what standards exist in THIS repo and apply them. No assu
 
 ## Prerequisites Validation
 
-**REQUIRED: TARGET_BRANCH and OUTPUT_FILE must be provided in prompt.**
+**REQUIRED: REPO_PATH, TARGET_BRANCH, and OUTPUT_FILE must be provided in prompt.**
 
 **CRITICAL: OUTPUT_FILE path MUST start with `/tmp/`. NEVER create paths in the project directory (no `docs/`, `reviews/`, `.claude/`, etc.).**
 
 On receiving a review request:
 
-1. **Check for OUTPUT_FILE in prompt**
+1. **Check for REPO_PATH and cd to it FIRST**
+   - Scan prompt for "REPO_PATH:" specification
+   - If found: `cd` to that directory before ANY other commands
+   - If NOT found: use current working directory (but warn in output)
+   - **All subsequent git/file commands operate from REPO_PATH**
+
+2. **Check for OUTPUT_FILE in prompt**
    - Scan prompt for "OUTPUT:" or "OUTPUT_FILE:" specification
    - If NOT found: STOP immediately with error:
      ```
@@ -37,7 +43,7 @@ On receiving a review request:
    - **VALIDATE:** Path MUST start with `/tmp/`. If not, STOP with error.
    - You MUST write to this EXACT path later. Do NOT create your own path.
 
-2. **Check for TARGET_BRANCH in prompt**
+3. **Check for TARGET_BRANCH in prompt**
    - Scan prompt for "TARGET BRANCH:" or "TARGET_BRANCH:" specification
    - If NOT found: STOP immediately with error:
      ```
@@ -47,7 +53,7 @@ On receiving a review request:
      ```
    - If found: extract the branch name and proceed
 
-3. **Verify target branch exists**
+4. **Verify target branch exists**
    ```bash
    git rev-parse --verify <TARGET_BRANCH> 2>/dev/null
    ```

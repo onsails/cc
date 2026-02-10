@@ -94,17 +94,31 @@ digraph review_loop {
 
 ## Step 2: Get Config
 
-If args provided, use them. Otherwise:
+Capture three values — user args override setup.sh defaults:
+
+| Variable | Source | Description |
+|----------|--------|-------------|
+| `REPO_PATH` | args or `pwd` | Repository root to operate in |
+| `TARGET_BRANCH` | args or PR/git detection | Branch to diff against |
+| `REVIEW_DIR` | setup.sh | Temp directory for review files |
+
+If args provided (e.g., `/review-loop path=/some/repo target=main`), use them. Otherwise run:
 ```
 ~/.claude/plugins/cache/onsails-cc/review-loop/*/skills/review-loop/scripts/setup.sh
 ```
+
+**All subagents MUST receive REPO_PATH.** Subagents inherit the session's original cwd, not the current shell cwd.
 
 ## Step 2.5: Code Simplification (if available)
 
 If `code-simplifier:code-simplifier` subagent is available, dispatch it to simplify code changes between current branch and TARGET_BRANCH:
 ```
 Task(subagent_type: "code-simplifier:code-simplifier",
-     prompt: "Simplify code changes between HEAD and ${TARGET_BRANCH}. Focus only on files modified in this branch.")
+     prompt: "REPO_PATH: ${REPO_PATH}
+TARGET_BRANCH: ${TARGET_BRANCH}
+
+cd to REPO_PATH first. Simplify code changes between HEAD and TARGET_BRANCH.
+Focus only on files modified in this branch.")
 TaskUpdate(taskId: SIMPLIFY, status: "completed")
 ```
 
@@ -116,7 +130,11 @@ TaskUpdate(taskId: SIMPLIFY, status: "completed")
 4. Dispatch reviewer:
    ```
    Task(subagent_type: "review-loop:local-reviewer",
-        prompt: "OUTPUT: ${REVIEW_DIR}/iterN.md\nTARGET: ${TARGET_BRANCH}")
+        prompt: "REPO_PATH: ${REPO_PATH}
+OUTPUT: ${REVIEW_DIR}/iterN.md
+TARGET_BRANCH: ${TARGET_BRANCH}
+
+cd to REPO_PATH first.")
    ```
    **Reviewer returns a summary.** Display it to user.
 5. **Read findings and triage (YOU do this, not a subagent):**
@@ -145,15 +163,18 @@ TaskUpdate(taskId: SIMPLIFY, status: "completed")
    TaskUpdate(taskId: FIX_TASK, status: "in_progress")
    Task(subagent_type: "general-purpose",
         description: "Fix: [issue title]",
-        prompt: "Fix this specific issue:
+        prompt: "REPO_PATH: ${REPO_PATH}
 
+cd to REPO_PATH first.
+
+Fix this specific issue:
    File: [file]:[line]
    Issue: [description]
    Severity: [severity]
 
-   Make minimal changes to fix ONLY this issue.
-   Do not fix other issues. Do not refactor surrounding code.
-   Run relevant tests after fixing if test infrastructure exists.")
+Make minimal changes to fix ONLY this issue.
+Do not fix other issues. Do not refactor surrounding code.
+Run relevant tests after fixing if test infrastructure exists.")
    TaskUpdate(taskId: FIX_TASK, status: "completed")
    ```
 
