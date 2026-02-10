@@ -8,7 +8,7 @@ Automated code review and fix loop with per-issue subagents.
 
 Single-pass reviews miss issues that only surface after fixes. A fix in file A
 might break file B. The loop continues until the codebase stabilizes - minimum
-4 iterations, exit only when zero critical/major issues remain.
+3 iterations, exit only when zero critical/major issues remain.
 
 ## Why Subagents?
 
