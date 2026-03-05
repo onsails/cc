@@ -152,6 +152,10 @@ Run relevant tests after fixing if test infrastructure exists.")
    **Each Task call = ONE fix. Never batch multiple fixes into one prompt.**
    **Wait for each subagent to complete before dispatching next.**
 
+   **NEVER revert subagent work based on LSP diagnostics.** LSP diagnostics are often
+   stale after subagent edits and produce false positives. If you see LSP warnings after
+   a subagent completes, ignore them — the next review iteration will catch real issues.
+
 7. `TaskUpdate(taskId: CURRENT, status: "completed")`
 
 ### CHECKPOINT (after all fixes dispatched)
@@ -218,6 +222,7 @@ After 2 iterations with no critical/major:
 | "All were false-positives, done" | NO. Next iteration may find real issues. Continue. |
 | "Code is clean after iteration 1" | NO. Run all 2 iterations. First pass misses subtle issues. |
 | "Fixes done, I'm done" | NO. Fixing is a sub-step. Go to CHECKPOINT, check iteration count. |
+| "LSP shows errors, reverting" | NO. LSP diagnostics are stale after edits. Never revert subagent work. Next iteration catches real issues. |
 
 ## Red Flags - STOP IMMEDIATELY
 
@@ -233,6 +238,7 @@ If you catch yourself:
 - Skipping iterations because "all false-positives" → STOP
 - **Ending response after fixes complete** → STOP (go to CHECKPOINT)
 - **Not checking metadata.iteration after fixes** → STOP (read the task, check the count)
+- **Reverting subagent work due to LSP diagnostics** → STOP (LSP is stale, next iteration catches real issues)
 
 **All mean: You violated the skill. Go back and follow it exactly.**
 
@@ -246,3 +252,4 @@ If you catch yourself:
 6. ONE fix subagent per issue — never batch
 7. YOU read findings and triage — no intermediary agent
 8. Never ask permission
+9. NEVER revert subagent work based on LSP diagnostics — they are stale
