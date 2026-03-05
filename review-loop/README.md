@@ -33,15 +33,10 @@ Or mention the skill in conversation.
 
 ## Key Features
 
-**Code simplification pre-pass** - If `code-simplifier` plugin is installed,
-runs it before review iterations to simplify code changes between your branch
-and the target branch. This reduces review noise and catches issues that would
-otherwise require multiple fix cycles.
-
-Recommended: Install from [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official):
-```bash
-claude plugin install code-simplifier@anthropic-official
-```
+**Code simplification pre-pass** - Runs the `simplify` skill before review
+iterations to clean up code changes between your branch and the target branch.
+This reduces review noise and catches issues that would otherwise require
+multiple fix cycles.
 
 **Auto-discovery of project standards** - The reviewer discovers and synthesizes:
 - CLAUDE.md / AGENTS.md instructions

@@ -14,11 +14,8 @@ If you're about to:
 
 ## Step 1: Create Tasks
 
-First, check if `code-simplifier:code-simplifier` subagent is available in your Task tool's subagent_type list.
-
-**If code-simplifier IS available:**
 ```
-TaskCreate(subject: "Simplify code", description: "Run code-simplifier before review", activeForm: "Simplifying code")
+TaskCreate(subject: "Simplify code", description: "Run simplify skill before review", activeForm: "Simplifying code")
 TaskCreate(subject: "Iteration 1: Review", description: "Review and fix", activeForm: "Running iteration 1", metadata: {"iteration": 1, "of": 3})
 TaskCreate(subject: "Iteration 2: Review", description: "Review and fix", activeForm: "Running iteration 2", metadata: {"iteration": 2, "of": 3})
 TaskCreate(subject: "Iteration 3: Review", description: "Review and fix", activeForm: "Running iteration 3", metadata: {"iteration": 3, "of": 3})
@@ -31,22 +28,6 @@ TaskUpdate(taskId: ITER2, addBlockedBy: [ITER1])
 TaskUpdate(taskId: ITER3, addBlockedBy: [ITER2])
 TaskUpdate(taskId: SIMPLIFY, status: "in_progress")
 ```
-
-**If code-simplifier is NOT available:**
-```
-TaskCreate(subject: "Iteration 1: Review", description: "Review and fix", activeForm: "Running iteration 1", metadata: {"iteration": 1, "of": 3})
-TaskCreate(subject: "Iteration 2: Review", description: "Review and fix", activeForm: "Running iteration 2", metadata: {"iteration": 2, "of": 3})
-TaskCreate(subject: "Iteration 3: Review", description: "Review and fix", activeForm: "Running iteration 3", metadata: {"iteration": 3, "of": 3})
-```
-
-Then set dependencies and start:
-```
-TaskUpdate(taskId: ITER2, addBlockedBy: [ITER1])
-TaskUpdate(taskId: ITER3, addBlockedBy: [ITER2])
-TaskUpdate(taskId: ITER1, status: "in_progress")
-```
-
-**Report to user:** "code-simplifier plugin not installed. Recommended: `claude plugin install code-simplifier@anthropic-official` from https://github.com/anthropics/claude-plugins-official"
 
 **CHECKPOINT: Have you created tasks? If NO → do it now. If YES → continue.**
 
@@ -63,8 +44,7 @@ digraph review_loop {
     rankdir=TB;
     "TaskCreate" [shape=box, style=bold];
     "Get REVIEW_DIR/TARGET_BRANCH" [shape=box];
-    "code-simplifier available?" [shape=diamond];
-    "Dispatch code-simplifier" [shape=box];
+    "Run simplify skill" [shape=box];
     "TaskList → find unblocked" [shape=box];
     "TaskGet → read iteration metadata" [shape=box];
     "Dispatch reviewer" [shape=box];
@@ -76,10 +56,8 @@ digraph review_loop {
     "Commit" [shape=box];
 
     "TaskCreate" -> "Get REVIEW_DIR/TARGET_BRANCH";
-    "Get REVIEW_DIR/TARGET_BRANCH" -> "code-simplifier available?";
-    "code-simplifier available?" -> "Dispatch code-simplifier" [label="yes"];
-    "code-simplifier available?" -> "TaskList → find unblocked" [label="no"];
-    "Dispatch code-simplifier" -> "TaskList → find unblocked";
+    "Get REVIEW_DIR/TARGET_BRANCH" -> "Run simplify skill";
+    "Run simplify skill" -> "TaskList → find unblocked";
     "TaskList → find unblocked" -> "TaskGet → read iteration metadata";
     "TaskGet → read iteration metadata" -> "Dispatch reviewer";
     "Dispatch reviewer" -> "Read findings + triage";
@@ -109,16 +87,11 @@ If args provided (e.g., `/review-loop path=/some/repo target=main`), use them. O
 
 **All subagents MUST receive REPO_PATH.** Subagents inherit the session's original cwd, not the current shell cwd.
 
-## Step 2.5: Code Simplification (if available)
+## Step 2.5: Code Simplification
 
-If `code-simplifier:code-simplifier` subagent is available, dispatch it to simplify code changes between current branch and TARGET_BRANCH:
+Run the simplify skill to clean up code changes between current branch and TARGET_BRANCH:
 ```
-Task(subagent_type: "code-simplifier:code-simplifier",
-     prompt: "REPO_PATH: ${REPO_PATH}
-TARGET_BRANCH: ${TARGET_BRANCH}
-
-cd to REPO_PATH first. Simplify code changes between HEAD and TARGET_BRANCH.
-Focus only on files modified in this branch.")
+Skill(skill: "simplify")
 TaskUpdate(taskId: SIMPLIFY, status: "completed")
 ```
 
@@ -244,7 +217,7 @@ After 3 iterations with no critical/major:
 | "I'll batch all fixes in one subagent" | NO. One Task per fix. Never batch. |
 | "I'll dispatch fix coordinator" | NO. YOU triage and dispatch fix subagents directly. |
 | "Would you like me to..." | NO. Never ask. Execute. |
-| "Skip code-simplifier, it's optional" | Check availability first. If available, run it. |
+| "Skip simplify, it's optional" | NO. Always run it before review iterations. |
 | "No issues found, stopping early" | NO. Reviewers find different issues each pass. Run all 3. |
 | "All were false-positives, done" | NO. Next iteration may find real issues. Continue. |
 | "Code is clean after iteration 1" | NO. Run all 3 iterations. First pass misses subtle issues. |
@@ -259,7 +232,7 @@ If you catch yourself:
 - Fixing issues directly (Edit/Write on code) → STOP
 - Batching multiple fixes into one subagent → STOP
 - Asking permission → STOP
-- Skipping code-simplifier without checking availability → STOP
+- Skipping simplify skill → STOP
 - Stopping before iteration 3 because "no issues" → STOP
 - Skipping iterations because "all false-positives" → STOP
 - **Ending response after fixes complete** → STOP (go to CHECKPOINT)
@@ -270,7 +243,7 @@ If you catch yourself:
 ## Iron Rules
 
 1. TaskCreate BEFORE anything else
-2. Check code-simplifier availability, run if present
+2. Run simplify skill before review iterations
 3. MINIMUM 3 review iterations
 4. ONLY Task tool on code (dispatch subagents)
 5. SEQUENTIAL iterations
