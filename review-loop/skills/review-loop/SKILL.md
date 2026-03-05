@@ -16,16 +16,14 @@ If you're about to:
 
 ```
 TaskCreate(subject: "Simplify code", description: "Run simplify skill before review", activeForm: "Simplifying code")
-TaskCreate(subject: "Iteration 1: Review", description: "Review and fix", activeForm: "Running iteration 1", metadata: {"iteration": 1, "of": 3})
-TaskCreate(subject: "Iteration 2: Review", description: "Review and fix", activeForm: "Running iteration 2", metadata: {"iteration": 2, "of": 3})
-TaskCreate(subject: "Iteration 3: Review", description: "Review and fix", activeForm: "Running iteration 3", metadata: {"iteration": 3, "of": 3})
+TaskCreate(subject: "Iteration 1: Review", description: "Review and fix", activeForm: "Running iteration 1", metadata: {"iteration": 1, "of": 2})
+TaskCreate(subject: "Iteration 2: Review", description: "Review and fix", activeForm: "Running iteration 2", metadata: {"iteration": 2, "of": 2})
 ```
 
 Then set dependencies (ITER1 blocked by SIMPLIFY):
 ```
 TaskUpdate(taskId: ITER1, addBlockedBy: [SIMPLIFY])
 TaskUpdate(taskId: ITER2, addBlockedBy: [ITER1])
-TaskUpdate(taskId: ITER3, addBlockedBy: [ITER2])
 TaskUpdate(taskId: SIMPLIFY, status: "in_progress")
 ```
 
@@ -171,11 +169,9 @@ Is ${metadata.iteration} < ${metadata.of}?
 
 **DO NOT STOP after fixes complete.** Fixing is a sub-step, not the end of the loop.
 
-**WHY 3 iterations are mandatory:**
+**WHY 2 iterations are mandatory:**
 - Reviewers find different issues on different passes
 - Fixes may introduce new problems
-- Context builds across iterations
-- First pass often misses subtle issues
 
 **NEVER stop early because:**
 - "No issues found" → Reviewer may find different issues next pass
@@ -184,11 +180,11 @@ Is ${metadata.iteration} < ${metadata.of}?
 
 ## Step 4: Completion
 
-After 3 iterations with no critical/major:
+After 2 iterations with no critical/major:
 
 1. **Mark final iteration task completed:**
    ```
-   TaskUpdate(taskId: ITER3, status: "completed")
+   TaskUpdate(taskId: ITER2, status: "completed")
    ```
 
 2. **Verify all tasks completed:**
@@ -212,15 +208,15 @@ After 3 iterations with no critical/major:
 | "I know what review-loop does" | You pattern-matched. Read the skill. TaskCreate FIRST. |
 | "Let me run setup first" | NO. TaskCreate comes before setup.sh |
 | "I'll create tasks after starting" | NO. Tasks FIRST, always. |
-| "Two iterations enough" | NO. Minimum 3. |
+| "One iteration enough" | NO. Minimum 2. |
 | "I'll fix this quickly" | NO. Dispatch a fix subagent per issue. |
 | "I'll batch all fixes in one subagent" | NO. One Task per fix. Never batch. |
 | "I'll dispatch fix coordinator" | NO. YOU triage and dispatch fix subagents directly. |
 | "Would you like me to..." | NO. Never ask. Execute. |
 | "Skip simplify, it's optional" | NO. Always run it before review iterations. |
-| "No issues found, stopping early" | NO. Reviewers find different issues each pass. Run all 3. |
+| "No issues found, stopping early" | NO. Reviewers find different issues each pass. Run all 2. |
 | "All were false-positives, done" | NO. Next iteration may find real issues. Continue. |
-| "Code is clean after iteration 1" | NO. Run all 3 iterations. First pass misses subtle issues. |
+| "Code is clean after iteration 1" | NO. Run all 2 iterations. First pass misses subtle issues. |
 | "Fixes done, I'm done" | NO. Fixing is a sub-step. Go to CHECKPOINT, check iteration count. |
 
 ## Red Flags - STOP IMMEDIATELY
@@ -233,7 +229,7 @@ If you catch yourself:
 - Batching multiple fixes into one subagent → STOP
 - Asking permission → STOP
 - Skipping simplify skill → STOP
-- Stopping before iteration 3 because "no issues" → STOP
+- Stopping before iteration 2 because "no issues" → STOP
 - Skipping iterations because "all false-positives" → STOP
 - **Ending response after fixes complete** → STOP (go to CHECKPOINT)
 - **Not checking metadata.iteration after fixes** → STOP (read the task, check the count)
@@ -244,7 +240,7 @@ If you catch yourself:
 
 1. TaskCreate BEFORE anything else
 2. Run simplify skill before review iterations
-3. MINIMUM 3 review iterations
+3. MINIMUM 2 review iterations
 4. ONLY Task tool on code (dispatch subagents)
 5. SEQUENTIAL iterations
 6. ONE fix subagent per issue — never batch
