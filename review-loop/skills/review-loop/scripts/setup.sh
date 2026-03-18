@@ -27,6 +27,9 @@ if [ -z "$TARGET_BRANCH" ]; then
       [[ "$branch" == "HEAD" ]] && continue
       [[ "$branch" == "origin/HEAD" ]] && continue
 
+      # Skip branches that aren't ancestors of HEAD (siblings, not parents)
+      git merge-base --is-ancestor "$branch" HEAD 2>/dev/null || continue
+
       # Get merge-base and calculate distance
       base=$(git merge-base HEAD "$branch" 2>/dev/null) || continue
       distance=$(git rev-list --count "$base..HEAD")
