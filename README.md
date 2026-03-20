@@ -29,12 +29,24 @@ Strict Rust development standards with FAIL FAST error handling.
 
 [Full documentation →](./rust-dev/README.md)
 
+### codex
+
+Orchestrate OpenAI Codex CLI from Claude Code via tmux.
+
+- Manages Codex in a separate tmux pane for parallel AI work
+- Auto-resolves plan references and context into self-contained prompts
+- Supervises execution, approves/rejects actions, reviews changes on completion
+- Requires tmux session and `codex` CLI in PATH
+
+[Full documentation →](./codex/README.md)
+
 ## Installation
 
 ```bash
 claude plugin marketplace add https://github.com/onsails/cc
 claude plugin install review-loop@onsails-cc
 claude plugin install rust-dev@onsails-cc
+claude plugin install codex@onsails-cc
 ```
 
 ## License
