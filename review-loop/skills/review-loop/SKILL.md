@@ -1,6 +1,8 @@
 ---
 name: review-loop
-description: Use when code changes need multi-pass automated review before merge. Use when preparing branch for PR. Use when thorough code quality check needed.
+description: Runs multi-pass automated code review with per-issue fix subagents. Triggers when preparing a branch for PR, reviewing code changes, or when thorough automated code quality review is needed.
+argument-hint: [path=/repo target=branch]
+allowed-tools: Task, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, Read, Bash(git *)
 ---
 
 # MANDATORY FIRST ACTION
