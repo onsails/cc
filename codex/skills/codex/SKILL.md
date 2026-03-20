@@ -1,6 +1,9 @@
 ---
 name: codex
-description: This skill orchestrates OpenAI Codex CLI from Claude Code via tmux. Use when delegating implementation tasks to Codex, running /codex with a prompt, or when parallel AI assistance in a separate pane is needed. Opens a tmux pane, launches Codex with the specified prompt, supervises execution, approves actions, and reviews changes upon completion.
+description: Orchestrates OpenAI Codex CLI from Claude Code via tmux. Use when delegating implementation tasks to Codex, running /codex with a prompt, or when parallel AI assistance in a separate pane is needed.
+argument-hint: [prompt for codex]
+disable-model-invocation: true
+allowed-tools: Bash(tmux *), Bash(git *), Bash(pgrep *), Bash([ -n *)
 ---
 
 # Codex Orchestration via tmux
@@ -26,13 +29,13 @@ If not in tmux, inform the user and abort.
 
 ### 2. Prepare the Prompt
 
-The user's prompt may contain references that need evaluation before passing to Codex:
+Construct a clear, self-contained prompt for Codex from `$ARGUMENTS`:
 
-- **Plan references**: If user says "implement this plan", read the plan file and include its contents
+- **Plan references**: If user says "implement this plan", read the plan file and inline its contents
 - **Context references**: If user references "the function above" or similar, resolve to actual code
 - **File references**: If user mentions specific files, verify they exist
 
-Construct a clear, self-contained prompt for Codex that includes all necessary context.
+The final prompt must be fully self-contained -- Codex has no access to this conversation.
 
 ### 3. Manage the Codex Pane
 
@@ -59,19 +62,18 @@ Send the Codex command to the pane. Required flags:
 - `--full-auto` - Low-friction automatic execution (recommended for supervised use)
 
 ```bash
-# Get repo root
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-
-# Send command to codex pane
 tmux send-keys -t "$CODEX_PANE" "codex --sandbox danger-full-access --full-auto -C '$REPO_ROOT' '$PROMPT'" Enter
 ```
 
-For complex prompts with special characters, use heredoc:
+For prompts with special characters, write to a temp file first:
 
 ```bash
-tmux send-keys -t "$CODEX_PANE" "codex --sandbox danger-full-access --full-auto -C '$REPO_ROOT' <<'CODEX_PROMPT'
-$PROMPT
-CODEX_PROMPT" Enter
+PROMPT_FILE=$(mktemp)
+cat > "$PROMPT_FILE" << 'EOF'
+<your resolved prompt here>
+EOF
+tmux send-keys -t "$CODEX_PANE" "codex --sandbox danger-full-access --full-auto -C '$REPO_ROOT' < '$PROMPT_FILE'" Enter
 ```
 
 ### 5. Supervise Execution
@@ -79,7 +81,6 @@ CODEX_PROMPT" Enter
 Monitor Codex progress by periodically capturing pane output:
 
 ```bash
-# Capture last N lines from codex pane
 tmux capture-pane -t "$CODEX_PANE" -p -S -50
 ```
 
@@ -107,7 +108,6 @@ Codex completion indicators:
 To check if Codex is still running:
 
 ```bash
-# Check if codex process exists in pane
 tmux list-panes -t "$CODEX_PANE" -F '#{pane_pid}' | xargs -I{} pgrep -P {} codex
 ```
 
@@ -116,13 +116,8 @@ tmux list-panes -t "$CODEX_PANE" -F '#{pane_pid}' | xargs -I{} pgrep -P {} codex
 After Codex completes, review all changes made:
 
 ```bash
-# Show git status
 git status
-
-# Show detailed diff
 git diff
-
-# Show untracked files
 git ls-files --others --exclude-standard
 ```
 
@@ -148,37 +143,6 @@ To close the Codex pane when done:
 tmux kill-pane -t "$CODEX_PANE"
 ```
 
-## Codex CLI Reference
-
-### Interactive Mode (Default)
-
-```bash
-codex [PROMPT]                    # Start interactive session
-codex -s danger-full-access       # Full disk access
-codex --full-auto                 # Auto-approve safe commands
-codex -C /path/to/dir             # Set working directory
-codex -m <model>                  # Specify model
-```
-
-### Non-Interactive Mode
-
-```bash
-codex exec [PROMPT]               # Run non-interactively
-codex exec --json                 # Output as JSONL events
-codex exec -o output.txt          # Save last message to file
-```
-
-### Key Flags
-
-| Flag | Description |
-|------|-------------|
-| `-s, --sandbox <MODE>` | `read-only`, `workspace-write`, `danger-full-access` |
-| `-a, --ask-for-approval <POLICY>` | `untrusted`, `on-failure`, `on-request`, `never` |
-| `--full-auto` | Alias for `-a on-request --sandbox workspace-write` |
-| `--dangerously-bypass-approvals-and-sandbox` | Skip all prompts (DANGEROUS) |
-| `-C, --cd <DIR>` | Working directory for Codex |
-| `--add-dir <DIR>` | Additional writable directories |
-
 ## Example Usage
 
 User: `/codex implement the authentication feature from our plan`
@@ -190,3 +154,5 @@ User: `/codex implement the authentication feature from our plan`
 5. Monitor progress, approve reasonable actions
 6. On completion, run `git diff` and verify changes match plan
 7. Report results to user
+
+For CLI flag details, see [reference.md](reference.md).
