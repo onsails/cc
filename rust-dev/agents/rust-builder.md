@@ -1,5 +1,6 @@
 ---
 name: rust-builder
+model: sonnet
 description: Runs cargo build, check, clippy, and test compilation commands. Use when compiling Rust code, verifying builds, or running lints.
 color: cyan
 allowedTools:
