@@ -1,6 +1,0 @@
-{
-  "name": "codex",
-  "description": "Orchestrate OpenAI Codex CLI from Claude Code via tmux for parallel AI-assisted development",
-  "version": "1.0.0",
-  "author": { "name": "Andrey Kuz" }
-}
