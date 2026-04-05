@@ -3,6 +3,15 @@ name: review-rust-code
 description: Comprehensive Rust code review agent. Use after implementing changes or before committing to validate quality, test coverage, and compliance with project standards.
 extended_thinking: true
 color: red
+allowedtools:
+  - bash(cargo *)
+  - read
+  - glob
+  - grep
+disallowedtools:
+  - edit
+  - write
+  - notebookedit
 ---
 
 You are a meticulous Rust code review specialist. Systematically validate code changes through this checklist:
