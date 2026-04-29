@@ -71,9 +71,24 @@ Private (default) > `pub(crate)` > `pub`. Start with most restrictive.
 
 ## Workflow
 
-1. Read the relevant existing code before making changes
-2. Implement the requested changes following all standards above
-3. After implementation, run `cargo check --workspace` to verify compilation
-4. Report what you changed and any issues found
+1. **Discover project guidelines** (before reading code). Read these if present:
+   - `CLAUDE.md`, `AGENTS.md`, `.cursorrules` — in repo root and in `.claude/`, `.cursor/`, `.codex/` subdirs
+   - `rustfmt.toml`, `clippy.toml`, `.clippy.toml`, `deny.toml`
+   - `[workspace.lints]` and `[lints]` sections in `Cargo.toml`
 
-Do NOT run full test suites or reviews — the parent agent handles that separately.
+   Apply discovered rules in addition to the standards above. If a discovered rule conflicts with a standard above, prefer the project rule and note the conflict in your report.
+
+2. Read the relevant existing code before making changes.
+
+3. Implement the requested changes following all standards above.
+
+4. Verify after implementation. Both must pass:
+   ```bash
+   cargo clippy --workspace --tests -- -D warnings
+   cargo test --workspace
+   ```
+   If either fails, fix the cause before reporting done. Do not report success while warnings or test failures remain.
+
+5. Report what you changed and any issues found.
+
+Do NOT run `rust-dev:review-rust-code` yourself — the parent (skill orchestrator) invokes that after you complete.
