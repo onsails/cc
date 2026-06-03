@@ -29,17 +29,6 @@ Strict Rust development standards with FAIL FAST error handling.
 
 [Full documentation →](./rust-dev/README.md)
 
-### codex
-
-Orchestrate OpenAI Codex CLI from Claude Code via tmux.
-
-- Manages Codex in a separate tmux pane for parallel AI work
-- Auto-resolves plan references and context into self-contained prompts
-- Supervises execution, approves/rejects actions, reviews changes on completion
-- Requires tmux session and `codex` CLI in PATH
-
-[Full documentation →](./codex/README.md)
-
 ### codex-sprint
 
 Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles in a living sprint doc.
@@ -48,6 +37,7 @@ Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles i
 - Per stage: brainstorm spec → write plan → codex implements → `/code-review --fix` → verify → land
 - Keeps the main context a lean conductor; runs each stage in an isolated worktree subagent
 - Delegates implementation to codex; degrades gracefully without `superpowers`/`codex`
+- Pairs with the official Codex plugin ([`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc), `codex@openai-codex`) for delegated execution
 
 [Full documentation →](./codex-sprint/README.md)
 
@@ -57,8 +47,14 @@ Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles i
 claude plugin marketplace add https://github.com/onsails/cc
 claude plugin install review-loop@onsails-cc
 claude plugin install rust-dev@onsails-cc
-claude plugin install codex@onsails-cc
 claude plugin install codex-sprint@onsails-cc
+```
+
+`codex-sprint` delegates execution to the official Codex plugin — install it from its own marketplace:
+
+```bash
+claude plugin marketplace add https://github.com/openai/codex-plugin-cc
+claude plugin install codex@openai-codex
 ```
 
 ## License

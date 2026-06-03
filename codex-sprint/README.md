@@ -25,7 +25,7 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 
 ## Requirements
 
-- **Best with:** [`superpowers`](https://github.com/obra/superpowers-marketplace) (specs & plans) and the `codex` plugin / `codex-companion` runtime (delegated execution). Both are optional — the skill degrades and tells you what to install.
+- **Best with:** [`superpowers`](https://github.com/obra/superpowers-marketplace) (specs & plans) and the official Codex plugin [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc) (`codex@openai-codex`, provides `codex:rescue` + the `codex-companion` runtime for delegated execution). Both are optional — the skill degrades and tells you what to install.
 - A git repository (stages use `git worktree`).
 
 ## Usage
