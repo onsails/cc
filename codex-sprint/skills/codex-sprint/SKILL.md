@@ -65,7 +65,7 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 1. **Brainstorm** (main) → `superpowers:brainstorming` (or bare) → `docs/plans/<NN>-<stage>-spec.md`.
 2. **Plan** (main) → `superpowers:writing-plans` (or bare) → `docs/plans/<NN>-<stage>-plan.md`.
 3. **Isolate** → create the worktree off the integration branch.
-4. **Execute** → codex implements the plan, write-enabled, **in the worktree**; effort by risk.
+4. **Execute** → codex implements the plan, write-enabled, **in the worktree**; effort by risk. If codex stalls/stops mid-plan, **resume the same thread** (`task --resume-last`, what `codex:rescue --resume` wraps) — never re-run fresh (mechanics §4).
 5. **Review** → headless `/code-review --fix` **in the worktree**; loop unresolved items back to step 4.
 6. **Verify** → repo test/build **in the worktree**; on failure, loop back to step 4.
 7. **Commit & land** → commit the worktree changes (codex/review leave them uncommitted), merge the branch into the integration branch, remove the worktree.
@@ -81,9 +81,11 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 | One giant spec/plan for the whole milestone | The anti-pattern this skill replaces. Decompose into stages. |
 | Merging/removing the worktree before committing | codex and `--fix` leave changes uncommitted — commit first (mechanics §7). |
 | Marking a stage `done` before it merged + passed verify | `done` = merged **and** green. |
+| codex stopped/stalled mid-stage → reported `blocked` or re-ran a fresh `task` | Resume the **same** thread first: `task --resume-last` (mechanics §4). Fresh loses codex's context and may clobber the partial edits. |
 
 ## Red Flags — STOP
 
 - About to read a full diff in the main context → dispatch a subagent instead.
 - About to start coding yourself → that's codex's job; delegate.
+- codex stopped before finishing and about to launch a fresh `task` (or report `blocked`) → resume the existing thread first (`--resume-last`, mechanics §4).
 - No sprint doc yet but already brainstorming a stage → create the branch + doc and decompose first.

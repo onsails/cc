@@ -22,7 +22,18 @@ $(cat docs/plans/$S-plan.md)
 [+ 'Use subagent-driven-development.' only if the codex-SDD probe found it]" \
   --cwd "$WT" --write --effort <high|xhigh>
 ```
-`--write` → codex runs `workspace-write` (edits files); without it, read-only. For a long stage, add `--background` and poll `node "$CODEX" status` / `node "$CODEX" result`; cap the polling (e.g. abort after N checks) and report `blocked` if it never resolves.
+`--write` → codex runs `workspace-write` (edits files); without it, read-only. For a long stage, add `--background` and poll `node "$CODEX" status` / `node "$CODEX" result`; cap the polling (e.g. abort after N checks). If the session stalls, gets stuck, or stops with the plan unfinished, **resume it (below) before reporting `blocked`.**
+
+**Resume a stuck or stopped session.** codex stopping mid-plan — interrupted, timed out, partial edits, dead `--background` job — is recoverable. **Resume the same thread** so codex keeps its own context, instead of a fresh `task` that re-derives everything and may clobber the partial edits. This is exactly what `codex:rescue --resume` wraps; call the runtime directly to target the worktree:
+```
+node "$CODEX" status --all --json            # find the job + whether it stopped
+node "$CODEX" result <job-id> --json         # background job: stop reason / output
+node "$CODEX" task --resume-last --write --cwd "$WT" --effort <high|xhigh> \
+  "Your previous run stopped before finishing. Re-read the plan and the current
+   worktree state, do only what remains, and complete it fully and exactly:
+$(cat docs/plans/$S-plan.md)"
+```
+`--resume-last` (what `codex:rescue --resume` adds) continues the **last** codex thread — sprints run one stage's codex at a time, so "last" is this stage's. Keep the partial worktree (uncommitted); never commit or land a partial stage. Cap resumes too: after ~2 that still leave the plan unfinished, report `blocked: codex stalled, <N>/<total> files, worktree retained`.
 
 **Codex absent.** The stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor).
 
