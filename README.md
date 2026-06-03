@@ -40,6 +40,17 @@ Orchestrate OpenAI Codex CLI from Claude Code via tmux.
 
 [Full documentation →](./codex/README.md)
 
+### codex-sprint
+
+Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles in a living sprint doc.
+
+- Decomposes a multistage milestone into stages; resumes across sessions from the doc
+- Per stage: brainstorm spec → write plan → codex implements → `/code-review --fix` → verify → land
+- Keeps the main context a lean conductor; runs each stage in an isolated worktree subagent
+- Delegates implementation to codex; degrades gracefully without `superpowers`/`codex`
+
+[Full documentation →](./codex-sprint/README.md)
+
 ## Installation
 
 ```bash
@@ -47,6 +58,7 @@ claude plugin marketplace add https://github.com/onsails/cc
 claude plugin install review-loop@onsails-cc
 claude plugin install rust-dev@onsails-cc
 claude plugin install codex@onsails-cc
+claude plugin install codex-sprint@onsails-cc
 ```
 
 ## License

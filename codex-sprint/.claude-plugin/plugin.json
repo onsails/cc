@@ -1,0 +1,6 @@
+{
+  "name": "codex-sprint",
+  "description": "Orchestrate one large milestone as a series of brainstorm/plan/codex-execute stages, tracked in a living sprint doc, with implementation delegated to codex",
+  "version": "0.2.0",
+  "author": { "name": "Andrey Kuz" }
+}
