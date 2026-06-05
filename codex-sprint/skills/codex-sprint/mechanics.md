@@ -41,9 +41,9 @@ $(cat docs/plans/$S-plan.md)"
 
 Headless, in the worktree. `--permission-mode acceptEdits` is required — without it the run stalls waiting for edit approval. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so it runs *before* the commit in step 7:
 ```
-(cd "$WT" && claude -p "/code-review <high|max|ultra> --fix" --permission-mode acceptEdits)
+(cd "$WT" && claude -p "/code-review <high|xhigh|max> --fix" --permission-mode acceptEdits)
 ```
-If it stalls on a **command** (not edit) prompt, escalate to `--permission-mode bypassPermissions` — safe here because the worktree is disposable. Check the exit status; on real failures, loop unresolved items back to step 4. `/code-review` levels are `low/medium/high/max/ultra` — there is **no** `xhigh` here (`xhigh` is a codex effort).
+If it stalls on a **command** (not edit) prompt, escalate to `--permission-mode bypassPermissions` — safe here because the worktree is disposable. Check the exit status; on real failures, loop unresolved items back to step 4. The auto-flow uses `high`/`xhigh`/`max` by stage risk (table below) and caps at `max`; `ultra` is a cloud multi-agent review the operator triggers manually, never the stage-runner.
 
 ## 6. Verify
 
@@ -69,5 +69,7 @@ git -C "$REPO" worktree remove "$WT" && git -C "$REPO" branch -d "$BR"
 | Stage risk | codex effort (step 4) | review effort (step 5) |
 |---|---|---|
 | low / cosmetic | high | high |
-| normal | high | max |
-| risky / wide blast radius | xhigh | ultra |
+| normal | xhigh | xhigh |
+| risky / wide blast radius | xhigh | max |
+
+`ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
