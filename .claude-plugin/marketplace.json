@@ -4,6 +4,7 @@
   "plugins": [
     { "name": "review-loop", "source": "./review-loop", "description": "Automated code review loop" },
     { "name": "rust-dev", "source": "./rust-dev", "description": "Rust development with strict standards and build/review agents" },
-    { "name": "codex-sprint", "source": "./codex-sprint", "description": "Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles in a living sprint doc" }
+    { "name": "codex-sprint", "source": "./codex-sprint", "description": "Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles in a living sprint doc" },
+    { "name": "mimo-code", "source": "./mimo-code", "description": "Delegate coding sessions to the mimo CLI" }
   ]
 }
