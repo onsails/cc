@@ -40,8 +40,8 @@ handle, never a freshly re-derived bare slug.
 
 ## Dispatch
 Dispatch `mimo-delegate` with: `handle`, `cwd` (absolute), `model`/`variant` (fresh
-only), the `prompt`, `mode: fresh`, and the absolute `LAUNCHER` path
-(`<this plugin>/scripts/mimo-run.mjs`). Relay its summary; never echo raw NDJSON.
+only), the `prompt`, and `mode: fresh`. (The subagent resolves the launcher path
+itself.) Relay its summary; never echo raw NDJSON.
 
 ## Resume
 Re-dispatch `mimo-delegate` with the SAME handle, `mode: resume`, and the
