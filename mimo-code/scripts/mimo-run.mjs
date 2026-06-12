@@ -93,10 +93,27 @@ async function main() {
   const mimoBin = process.env.MIMO_BIN || "mimo";
 
   acquireLock(lockPath);
-  const release = () => { try { fs.unlinkSync(lockPath); } catch { /* best-effort */ } };
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    try { fs.unlinkSync(lockPath); } catch { /* best-effort */ }
+  };
   process.on("exit", release);
 
   const child = spawn(mimoBin, mimoArgs, { cwd: args.cwd, stdio: ["ignore", "pipe", "inherit"] });
+
+  // process.on("exit") does NOT fire on signal termination. The host's run cap
+  // kills us with SIGTERM, so release the lock and tear down the child here to
+  // avoid a leaked lock + orphaned mimo.
+  for (const sig of ["SIGTERM", "SIGINT"]) {
+    process.on(sig, () => {
+      try { child.kill("SIGTERM"); } catch { /* already gone */ }
+      release();
+      process.exit(sig === "SIGINT" ? 130 : 143);
+    });
+  }
+
   const log = fs.createWriteStream(logPath, { flags: "w" });
   let captured = args.resume; // on resume the id is already known/recorded
 
@@ -112,15 +129,29 @@ async function main() {
     }
   });
 
+  // Exit only after BOTH the child has closed AND readline has drained every
+  // buffered line — otherwise the last NDJSON line or the log tail can be lost,
+  // and log.end() could race a pending write.
+  let childExitCode = null;
+  let childClosed = false;
+  let rlClosed = false;
+  const finish = () => {
+    if (!childClosed || !rlClosed) return;
+    log.end();
+    release();
+    process.exit(childExitCode == null ? 0 : childExitCode);
+  };
+  rl.on("close", () => { rlClosed = true; finish(); });
+
   child.on("error", (e) => {
     release();
     process.stderr.write(`mimo-run: spawn failed: ${e.message}\n`);
     process.exit(127);
   });
   child.on("close", (code, signal) => {
-    log.end();
-    release();
-    process.exit(code == null ? (signal ? 1 : 0) : code);
+    childExitCode = code == null ? (signal ? 1 : 0) : code;
+    childClosed = true;
+    finish();
   });
 }
 
