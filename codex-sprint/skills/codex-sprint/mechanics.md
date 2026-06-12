@@ -39,11 +39,23 @@ $(cat docs/plans/$S-plan.md)"
 
 ## 5. Review
 
-Headless, in the worktree. `--permission-mode acceptEdits` is required — without it the run stalls waiting for edit approval. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so it runs *before* the commit in step 7:
+**In a subagent — mandatory.** The stage-runner dispatches the review as a subagent — the same dispatch it already uses for a `general-purpose` worktree subagent when codex is absent (§4). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so review runs *before* the commit in §7.
+
+`$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is codex's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
 ```
-(cd "$WT" && claude -p "/code-review <high|xhigh|max> --fix" --permission-mode acceptEdits)
+Agent(
+  subagent_type: "general-purpose",
+  mode: "acceptEdits",        # → "bypassPermissions" only if a *command* prompt stalls it; safe, worktree is disposable
+  description: "review $S",
+  prompt: """
+Your working directory is the worktree <abs $WT> — first action: cd into it, run everything there.
+Invoke the code-review skill with args: <high|xhigh|max> --fix
+so it reviews AND applies fixes to the uncommitted working-tree diff in this worktree.
+Work autonomously: apply every fix, never ask for approval, do NOT commit.
+Return only `clean`, or a terse bullet list of items you could not resolve. No diffs, no narration.
+""")
 ```
-If it stalls on a **command** (not edit) prompt, escalate to `--permission-mode bypassPermissions` — safe here because the worktree is disposable. Check the exit status; on real failures, loop unresolved items back to step 4. The auto-flow uses `high`/`xhigh`/`max` by stage risk (table below) and caps at `max`; `ultra` is a cloud multi-agent review the operator triggers manually, never the stage-runner.
+On unresolved items, loop back to step 4. Effort is `high`/`xhigh`/`max` by stage risk (table below), capped at `max`; `ultra` is a cloud multi-agent review the operator triggers manually, never the stage-runner.
 
 ## 6. Verify
 

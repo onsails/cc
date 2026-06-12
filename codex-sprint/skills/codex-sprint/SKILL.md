@@ -66,18 +66,19 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 2. **Plan** (main) → `superpowers:writing-plans` (or bare) → `docs/plans/<NN>-<stage>-plan.md`.
 3. **Isolate** → create the worktree off the integration branch.
 4. **Execute** → codex implements the plan, write-enabled, **in the worktree**; effort by risk. If codex stalls/stops mid-plan, **resume the same thread** (`task --resume-last`, what `codex:rescue --resume` wraps) — never re-run fresh (mechanics §4).
-5. **Review** → headless `/code-review --fix` **in the worktree**; loop unresolved items back to step 4.
+5. **Review** → `/code-review <high|xhigh|max> --fix` (effort by stage risk) in a **subagent** (Agent/Task tool) that cds into the worktree; loop unresolved items back to step 4 (mechanics §5).
 6. **Verify** → repo test/build **in the worktree**; on failure, loop back to step 4.
 7. **Commit & land** → commit the worktree changes (codex/review leave them uncommitted), merge the branch into the integration branch, remove the worktree.
 8. **Update doc** (main) → stage → `done` + merge SHA; append decisions/questions; commit the doc; next stage.
 
-**Dispatch model:** per stage the conductor spawns **one** `general-purpose` stage-runner subagent that executes steps 3–7 from the repo root and returns a **terse** report: `landed @sha` / `blocked: <reason>` / files-touched count. The conductor runs only steps 1–2 and 8 — never the Mechanics commands. **No diffs or logs reach the conductor.**
+**Dispatch model:** per stage the conductor spawns **one** `general-purpose` stage-runner subagent that executes steps 3–7 from the repo root and returns a **terse** report: `landed @sha` / `blocked: <reason>` / files-touched count. Within that, **step 5's `/code-review <high|xhigh|max> --fix` runs in its own subagent** the stage-runner dispatches (Agent/Task tool, cd into `$WT`). The conductor runs only steps 1–2 and 8 — never the Mechanics commands. **No diffs or logs reach the conductor.**
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---|---|
-| codex or review run in the main repo, not a worktree | Always `--cwd "$WT"` / a `(cd "$WT" && …)` subshell; both mutate files. |
+| codex or review run in the main repo, not a worktree | codex: `--cwd "$WT"`. Review: the nested subagent cds into `$WT` first. Both mutate files. |
+| Review run inline or as a `claude -p` subprocess instead of a subagent | Step 5 is **mandatory in a nested Agent/Task subagent** (mechanics §5) — keeps diffs/fixes out of the stage-runner's context. |
 | One giant spec/plan for the whole milestone | The anti-pattern this skill replaces. Decompose into stages. |
 | Merging/removing the worktree before committing | codex and `--fix` leave changes uncommitted — commit first (mechanics §7). |
 | Marking a stage `done` before it merged + passed verify | `done` = merged **and** green. |
