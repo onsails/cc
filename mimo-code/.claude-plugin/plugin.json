@@ -1,6 +1,6 @@
 {
   "name": "mimo-code",
   "description": "Delegate write-capable coding sessions to the mimo CLI (Xiaomi's opencode fork); captures session ids for parallel-safe resume",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": { "name": "Andrey Kuz" }
 }
