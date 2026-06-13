@@ -4,20 +4,6 @@ Claude Code plugins for power users.
 
 ## Plugins
 
-### review-loop
-
-Automated code review and fix loop with per-issue subagents.
-
-- Code simplification pre-pass via `simplify` skill
-- Runs minimum 4 review iterations until stable
-- Spawns isolated Task agent per issue (preserves main context)
-- Auto-discovers project standards: CLAUDE.md, CI configs, linter rules
-- Smart target branch detection via PR or git history
-
-<img width="804" height="699" alt="Screenshot 2026-01-24 at 15 17 56" src="https://github.com/user-attachments/assets/db1bfd12-a76f-4696-8804-2e48da2a5f57" />
-
-[Full documentation →](./review-loop/README.md)
-
 ### rust-dev
 
 Strict Rust development standards with FAIL FAST error handling.
@@ -57,7 +43,6 @@ Delegate write-capable coding sessions to the [`mimo` CLI](https://github.com/Xi
 
 ```bash
 claude plugin marketplace add https://github.com/onsails/cc
-claude plugin install review-loop@onsails-cc
 claude plugin install rust-dev@onsails-cc
 claude plugin install codex-sprint@onsails-cc
 claude plugin install mimo-code@onsails-cc
