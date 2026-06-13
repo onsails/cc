@@ -41,6 +41,18 @@ Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles i
 
 [Full documentation →](./codex-sprint/README.md)
 
+### mimo-code
+
+Delegate write-capable coding sessions to the `mimo` CLI (Xiaomi's opencode fork), keeping Claude the conductor.
+
+- Offloads implementation to mimo on a chosen `provider/model` + effort
+- Runs each session in a sonnet subagent — main context stays lean
+- Captures every session id to a parallel-safe file for resume (`--session`, never `--continue`)
+- Resolves the model from `mimo models` ∩ authenticated providers and asks you
+- Per-handle `O_EXCL` lock keeps concurrent sessions isolated
+
+[Full documentation →](./mimo-code/README.md)
+
 ## Installation
 
 ```bash
@@ -48,6 +60,7 @@ claude plugin marketplace add https://github.com/onsails/cc
 claude plugin install review-loop@onsails-cc
 claude plugin install rust-dev@onsails-cc
 claude plugin install codex-sprint@onsails-cc
+claude plugin install mimo-code@onsails-cc
 ```
 
 `codex-sprint` delegates execution to the official Codex plugin — install it from its own marketplace:
