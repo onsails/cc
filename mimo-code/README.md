@@ -1,6 +1,7 @@
 # mimo-code
 
-Delegate write-capable coding sessions to the `mimo` CLI (Xiaomi's opencode fork).
+Delegate write-capable coding sessions to the
+[`mimo` CLI](https://github.com/XiaomiMiMo/MiMo-Code) (Xiaomi's opencode fork).
 Claude stays the conductor; the heavy work and the tokens move to mimo.
 
 ## What it does

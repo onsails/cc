@@ -43,7 +43,7 @@ Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles i
 
 ### mimo-code
 
-Delegate write-capable coding sessions to the `mimo` CLI (Xiaomi's opencode fork), keeping Claude the conductor.
+Delegate write-capable coding sessions to the [`mimo` CLI](https://github.com/XiaomiMiMo/MiMo-Code) (Xiaomi's opencode fork), keeping Claude the conductor.
 
 - Offloads implementation to mimo on a chosen `provider/model` + effort
 - Runs each session in a sonnet subagent — main context stays lean
