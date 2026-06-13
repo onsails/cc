@@ -22,9 +22,10 @@ or second-guess the task — you execute the delegation and summarize the outcom
 - `mode` — `fresh` or `resume`.
 
 ## What you do
-1. Resolve the launcher — the deployed plugin copy:
-   `LAUNCHER=$(ls ~/.claude/plugins/cache/onsails-cc/mimo-code/*/scripts/mimo-run.mjs | head -1)`
-   (If that glob is empty, the plugin isn't deployed — report that and stop.)
+1. Resolve the launcher — the deployed plugin copy (nix-vendor layout first, then
+   the marketplace-cache layout):
+   `LAUNCHER=$(ls ~/.claude/vendor/onsails-cc/mimo-code/scripts/mimo-run.mjs ~/.claude/plugins/cache/onsails-cc/mimo-code/*/scripts/mimo-run.mjs 2>/dev/null | head -1)`
+   (If empty, the plugin isn't deployed — report that and stop.)
 2. Run EXACTLY ONE foreground Bash call (set a generous `timeout`, up to the max):
    - Fresh: `node "$LAUNCHER" --handle <handle> --cwd <cwd> -- [-m <model>] [--variant <variant>] "<prompt>"`
    - Resume: `node "$LAUNCHER" --handle <handle> --cwd <cwd> --resume -- "<prompt>"`
