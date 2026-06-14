@@ -9,8 +9,9 @@ Slugs: `<sprint>` = milestone slug (e.g. `auth`); `<stage>` = stage slug (e.g. `
 Capture the repo root now (cwd is root here), so §7 can act on the main tree regardless of later cwd:
 ```
 REPO=$(git rev-parse --show-toplevel)
-git worktree add -b "$BR" "$WT" feat/<sprint>
+git worktree add -b "$BR" "$WT" feat/<sprint> || { echo "blocked: cannot isolate stage $S (worktree add failed)"; exit 1; }
 ```
+**Mandatory, no fallback.** If this fails — integration branch `feat/<sprint>` missing (sprint never started), a dirty main tree, branch `$BR` already exists — **report `blocked` and stop.** Never proceed by editing/committing stage code in the main tree: the entire stage runs inside `$WT` on `$BR`, and stage code reaches the integration branch only via the §7 merge.
 
 ## 4. Execute
 

@@ -73,11 +73,14 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 
 **Dispatch model:** per stage the conductor spawns **one** `general-purpose` stage-runner subagent that executes steps 3–7 from the repo root and returns a **terse** report: `landed @sha` / `blocked: <reason>` / files-touched count. Within that, **step 5's `/code-review <high|xhigh|max> --fix` runs in its own subagent** the stage-runner dispatches (Agent/Task tool, cd into `$WT`). The conductor runs only steps 1–2 and 8 — never the Mechanics commands. **No diffs or logs reach the conductor.**
 
+**Isolation invariant (non-negotiable):** stage **code** never touches the main checkout. Every edit, review fix, and the stage commit happen on the **stage branch `$BR` inside the worktree `$WT`**. Stage code reaches the integration branch **only** through the §7 `git merge --no-ff "$BR"`. The stage-runner must **never** edit stage code in the main tree and **never** `git commit` stage code onto the integration or base branch directly — even when it seems faster, even if the worktree step was skipped, even for a "one-line" change. The *only* thing committed directly to the integration branch is the conductor's step-8 sprint-doc bookkeeping. If step 3 can't isolate (integration branch missing, dirty main tree, `git worktree add` fails), **report `blocked` and stop** — never fall back to working in the main tree.
+
 ## Common Mistakes
 
 | Mistake | Fix |
 |---|---|
 | codex or review run in the main repo, not a worktree | codex: `--cwd "$WT"`. Review: the nested subagent cds into `$WT` first. Both mutate files. |
+| Committing stage code straight onto the current/integration branch (no worktree, no stage branch) | Violates the isolation invariant. Stage code is committed on `$BR` in `$WT` and only reaches the integration branch via §7 `merge --no-ff`. Can't isolate → `blocked`, never commit in the main tree. |
 | Review run inline or as a `claude -p` subprocess instead of a subagent | Step 5 is **mandatory in a nested Agent/Task subagent** (mechanics §5) — keeps diffs/fixes out of the stage-runner's context. |
 | One giant spec/plan for the whole milestone | The anti-pattern this skill replaces. Decompose into stages. |
 | Merging/removing the worktree before committing | codex and `--fix` leave changes uncommitted — commit first (mechanics §7). |
@@ -88,5 +91,6 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 
 - About to read a full diff in the main context → dispatch a subagent instead.
 - About to start coding yourself → that's codex's job; delegate.
+- About to `git add`/`commit` in the main tree or onto the integration/base branch (stage code) → STOP. Stage code commits only on `$BR` inside `$WT`; it reaches the integration branch via §7 `merge --no-ff`. (Only the conductor's doc commit in step 8 goes on the integration branch.)
 - codex stopped before finishing and about to launch a fresh `task` (or report `blocked`) → resume the existing thread first (`--resume-last`, mechanics §4).
 - No sprint doc yet but already brainstorming a stage → create the branch + doc and decompose first.
