@@ -1,6 +1,7 @@
 ---
 name: mimo-code
 description: Use when delegating a coding task to mimo (the mimo CLI / Xiaomi opencode fork) — offloading implementation to mimo, resuming a mimo session, or running work on a chosen provider/model. Triggers on "/mimo-code", "run mimo", "delegate to mimo", "resume the mimo session", "offload this to mimo".
+argument-hint: "[<provider/model>] [variant] [task | resume]"
 ---
 
 # mimo-code
@@ -19,9 +20,11 @@ work and tokens move to mimo; you orchestrate and review the diff.
 context. You only ever receive its distilled summary.
 
 ## Parse the invocation
-`/mimo-code [provider/model] [variant] <task>`
+Raw slash-command arguments: `$ARGUMENTS`
+
+Interpret as `[provider/model] [variant] <task>` (empty when triggered by description match rather than `/mimo-code` — then read intent from the user's message):
 - A leading `xxx/yyy` token → model. A following `minimal|low|medium|high|max` → variant.
-- The rest is the task. Natural-language requests map the same way.
+- The rest is the task; `resume`/`continue` → resume the recorded session (see Resume). Natural-language requests map the same way.
 
 ## Resolve the model — ASK, do not default (only when no model was given, fresh runs only)
 1. **Gather options via the `mimo-resolve` subagent** (model sonnet). It runs the
