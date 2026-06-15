@@ -30,6 +30,16 @@ test("resolveModels intersects authed providers with models and lists variants",
   assert.ok(!r.options.some((o) => o.provider === "mimo"));
 });
 
+test("resolveModels ignores ● that is not the first glyph on a line", () => {
+  const providersRaw = [
+    "┌ Credentials",
+    "│  ●  OpenAI oauth",
+    "└  legend: ● = active",
+  ].join("\n");
+  const r = resolveModels({ providersRaw, modelsRaw: MODELS_RAW });
+  assert.deepEqual(r.authenticatedProviders, ["openai"]);
+});
+
 test("resolveModels returns empty when no providers are authenticated", () => {
   const r = resolveModels({
     providersRaw: "┌ Credentials\n└ 0 credentials",

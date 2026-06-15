@@ -94,13 +94,15 @@ export function resolveModels({ providersRaw, modelsRaw }) {
 
   const authenticatedProviders = [];
   for (const raw of stripAnsi(providersRaw).split("\n")) {
-    const idx = raw.indexOf("●");
-    if (idx < 0) continue;
+    // Anchor to line start: drop leading box-drawing glyphs/whitespace, then the
+    // bullet must be the FIRST real glyph. This rejects `●` appearing mid-text
+    // (e.g. a `legend: ● = active` footer) from minting phantom providers.
+    const rest = raw.replace(/^[┌│└├─\s]*/, "");
+    if (!rest.startsWith("●")) continue;
     // First whitespace-delimited token after the bullet is the display name.
-    const after = raw.slice(idx + "●".length).trim();
-    const name = after.split(/\s+/)[0];
-    if (!name) continue;
+    const name = rest.slice("●".length).trim().split(/\s+/)[0] || "";
     const provider = name.toLowerCase();
+    if (!/^[a-z0-9_-]+$/.test(provider)) continue;
     if (!authenticatedProviders.includes(provider)) authenticatedProviders.push(provider);
   }
 
