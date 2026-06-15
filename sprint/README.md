@@ -1,8 +1,8 @@
-# codex-sprint
+# sprint
 
-Orchestrate one large milestone as a series of **brainstorm → plan → codex-execute** stages, tracked in a living sprint doc, with the implementation delegated to OpenAI Codex while Claude stays the conductor.
+Orchestrate one large milestone as a series of **brainstorm → plan → execute** stages, tracked in a living sprint doc, with the implementation delegated to an executor (codex *or* mimo) while Claude stays the conductor.
 
-> You are the foreman. Codex digs.
+> You are the foreman. The executor digs.
 
 ## What it's for
 
@@ -12,24 +12,37 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 
 - A milestone needs *multiple* brainstorm/plan rounds, not one spec → done.
 - Work spans sessions and you need to resume "what stage am I on".
-- You want to hand the coding to codex while steering design yourself.
+- You want to hand the coding to an executor while steering design yourself.
 
-**Not for:** a single-spec feature (use `superpowers:brainstorming` → `writing-plans` → execute) or a one-off task (use `codex:rescue` directly).
+**Not for:** a single-spec feature (use `superpowers:brainstorming` → `writing-plans` → execute) or a one-off task (use `codex:rescue` or `mimo-code` directly).
 
 ## How it works
 
 - **Lean conductor.** The main context holds only the sprint doc, current stage, decisions, and open questions. Every technical step runs in an isolated git worktree via a subagent, so diffs and build logs never flood it.
-- **Per-stage lifecycle:** brainstorm a spec → write a plan → isolate a worktree → codex implements (`--write`) → headless `/code-review --fix` → verify → commit & land → update the doc.
-- **Graceful degradation.** Probes for `superpowers`, the `codex` plugin, and a codex-side subagent-driven-development skill; adapts and recommends installing whatever is missing.
-- **Exact commands** (codex invocation, worktree, review, land) live in [`mechanics.md`](./skills/codex-sprint/mechanics.md) alongside the skill.
+- **Per-stage lifecycle:** brainstorm a spec → write a plan → isolate a worktree → executor implements → headless `/code-review --fix` → verify → commit & land → update the doc.
+- **Two executors.** The same orchestration drives either engine; only the Execute step differs:
+  - **mimo** — via the `mimo-code` plugin (a hard dependency, always present).
+  - **codex** — via the official Codex plugin, an *optional* runtime probe.
+- The chosen engine is recorded in the sprint-doc header so cross-session resume keeps the same engine without re-asking.
 
 ## Requirements
 
-- **Best with:** [`superpowers`](https://github.com/obra/superpowers-marketplace) (specs & plans) and the official Codex plugin [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc) (`codex@openai-codex`, provides `codex:rescue` + the `codex-companion` runtime for delegated execution). Both are optional — the skill degrades and tells you what to install.
+- **`mimo-code` — hard dependency.** `sprint/.claude-plugin/plugin.json` declares `"dependencies": ["mimo-code"]`, so installing `sprint` auto-installs `mimo-code`. The mimo executor is therefore always available.
+- **Codex — optional.** The official Codex plugin [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc) (`codex@openai-codex`) provides `codex:rescue` + the `codex-companion` runtime. It lives in an external marketplace, so it can't be a hard dependency — it stays a runtime probe.
+- **Best with:** [`superpowers`](https://github.com/obra/superpowers-marketplace) for specs & plans (the skill degrades and tells you what's missing).
 - A git repository (stages use `git worktree`).
 
 ## Usage
 
-Invoke the `codex-sprint` skill and describe the milestone. It will probe capabilities, decompose the milestone into stages, and drive them.
+| Command | Engine |
+| --- | --- |
+| `/sprint` | Probe: if codex is present, ask (mimo vs codex); otherwise mimo. |
+| `/sprint mimo` | mimo (model resolved per stage). |
+| `/sprint codex` | codex. |
+| `/sprint mimo <provider/model> [variant]` | mimo, pinned to that model for the whole sprint. |
 
-[Skill reference →](./skills/codex-sprint/SKILL.md)
+Describe the milestone after the command. The skill probes capabilities, decomposes the milestone into stages, and drives them.
+
+The mimo model is resolved automatically before every stage (authenticated providers ∩ model catalogue) — unless you pin one with the `<provider/model> [variant]` form, in which case the pinned model is reused for every stage.
+
+[Skill reference →](./skills/sprint/SKILL.md)
