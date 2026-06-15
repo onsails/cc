@@ -2,7 +2,7 @@
 name: mimo-delegate
 model: sonnet
 description: Runs one mimo coding session via the mimo-run launcher and returns a distilled result. Use when the mimo-code skill delegates or resumes a mimo session.
-allowedTools:
+tools:
   - Bash
   - Read
   - Glob
@@ -35,8 +35,15 @@ or second-guess the task — you execute the delegation and summarize the outcom
    `timeout`, up to the max):
    - Fresh: `"$RUNNER" "$LAUNCHER" --handle <handle> --cwd <cwd> -- [-m <model>] [--variant <variant>] "<prompt>"`
    - Resume: `"$RUNNER" "$LAUNCHER" --handle <handle> --cwd <cwd> --resume -- "<prompt>"`
-3. Read the streamed NDJSON. Determine whether mimo finished (a `step_finish`
-   with `reason: "stop"`), errored, or was cut off (timeout / non-zero exit).
+   The launcher streams **concise `[mimo]` progress lines** to stdout (one per
+   event — `▸ step started`, `⚙ <tool>`, `· <text>`, `■ step finished (reason)`);
+   the full raw NDJSON goes to the `<handle>.ndjson` log file, not stdout.
+3. Decide the outcome from the progress trace AND the worktree diff. **`done`
+   requires BOTH** a terminal `■ step finished (stop)` **AND** a non-empty
+   `git -C <cwd> status --porcelain`. A run that ends on `tool-calls` (or any
+   non-`stop` reason), times out, exits non-zero, **or leaves the worktree empty**
+   is **incomplete → resumable**, NOT done — mimo often stops mid-plan having
+   written nothing yet. Do not report `done` for an empty diff.
 4. Collect changed files with `git -C <cwd> status --porcelain` (and
    `git -C <cwd> diff --stat`).
    The launcher writes the session id to
@@ -53,6 +60,8 @@ or second-guess the task — you execute the delegation and summarize the outcom
 ## Rules
 - NEVER use `--continue`; resume is always by recorded session id (the launcher
   enforces this).
-- NEVER stream raw NDJSON back to the main thread — summarize.
-- One launcher call per dispatch. If it times out, report incomplete + resumable;
-  do not loop.
+- The launcher already emits a concise `[mimo]` progress trace (full NDJSON stays
+  in the log file). Relay a SHORT step trace + outcome — never a raw NDJSON dump.
+- One launcher call per dispatch, run it **foreground** (you block until mimo
+  exits). If it times out, report incomplete + resumable; do not loop, do not run
+  it in the background.
