@@ -24,12 +24,19 @@ context. You only ever receive its distilled summary.
 - The rest is the task. Natural-language requests map the same way.
 
 ## Resolve the model — ASK, do not default (only when no model was given, fresh runs only)
-1. `mimo providers list` → authenticated providers. None → STOP and tell the user to run `mimo providers login`.
-2. `mimo models` → catalogue; keep only models whose provider is authenticated (the intersection).
-3. **Exactly one usable model** → auto-pick (asking is pointless). **More than one → ASK the user** which one (AskUserQuestion when ≤4; else print the grouped list and have them name an id).
-4. **Ask effort/variant** too, offering a "default" option that omits `--variant`.
+1. **Gather options via the `mimo-resolve` subagent** (model sonnet). It runs the
+   `resolve-models` launcher and returns the authenticated provider∩model `options`
+   and `variants` — keeping the catalogue output out of the conductor's context.
+   Empty options (no authenticated provider) → STOP and tell the user to run
+   `mimo providers login`.
+2. Using the returned `options` (the authenticated intersection):
+   **Exactly one usable model** → auto-pick (asking is pointless). **More than one →
+   ASK the user** which one (AskUserQuestion when ≤4; else print the grouped list and
+   have them name an id).
+3. **Ask effort/variant** too, offering a "default" option that omits `--variant`.
 
-Both reads are tiny and read-only — they do NOT pollute context. Do this in the main thread before dispatching.
+The conductor does the asking/auto-pick itself — `mimo-resolve` only gathers,
+never asks.
 
 ## Pick a handle — unique per delegation
 Generate a UNIQUE slug per fresh delegation: a task-derived stem **plus a short
