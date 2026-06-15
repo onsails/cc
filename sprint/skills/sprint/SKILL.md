@@ -52,6 +52,7 @@ Record the engine in the sprint-doc header. **The model is stored in the header 
 - `Engine: codex`
 - `Engine: mimo` — resolve the model **every stage** (the conductor dispatches `mimo-resolve` and ASKs/auto-picks per stage).
 - `Engine: mimo (model: <provider/model>, variant: <v>, pinned)` — **only** on an explicit user pin like `/sprint mimo <provider/model> [variant]`; reuse the pinned model+variant every stage.
+- `Engine: bare` — last-resort fallback when neither executor is available (the stage-runner implements stages itself, mechanics §4c). Normally unreachable since mimo is a hard dependency; recorded so a resumed bare sprint still has a recognizable header.
 
 ## The Sprint Doc
 
