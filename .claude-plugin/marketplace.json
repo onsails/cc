@@ -3,7 +3,7 @@
   "owner": { "name": "Andrey Kuz" },
   "plugins": [
     { "name": "rust-dev", "source": "./rust-dev", "description": "Rust development with strict standards and build/review agents" },
-    { "name": "codex-sprint", "source": "./codex-sprint", "description": "Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles in a living sprint doc" },
+    { "name": "sprint", "source": "./sprint", "description": "Staged brainstorm/plan/execute sprints delegating implementation to codex or mimo" },
     { "name": "mimo-code", "source": "./mimo-code", "description": "Delegate coding sessions to the mimo CLI" }
   ]
 }

@@ -1,6 +1,7 @@
 {
-  "name": "codex-sprint",
-  "description": "Orchestrate one large milestone as a series of brainstorm/plan/codex-execute stages, tracked in a living sprint doc, with implementation delegated to codex",
-  "version": "0.2.5",
+  "name": "sprint",
+  "description": "Orchestrate one large milestone as staged brainstorm/plan/execute cycles in a living sprint doc, delegating implementation to codex or mimo",
+  "version": "0.3.0",
+  "dependencies": ["mimo-code"],
   "author": { "name": "Andrey Kuz" }
 }
