@@ -1,4 +1,4 @@
-# codex-sprint — Mechanics
+# sprint — Mechanics
 
 Exact commands for per-stage lifecycle steps 3–7. The conductor never runs these; the **stage-runner subagent** does, **from the repo root**.
 
@@ -15,7 +15,11 @@ git worktree add -b "$BR" "$WT" feat/<sprint> || { echo "blocked: cannot isolate
 
 ## 4. Execute
 
-**Codex present.** The codex runtime is the `task` helper that `codex:rescue` wraps; call it directly so you can target the worktree with `--cwd`:
+Read the engine from the sprint-doc `Engine:` header and dispatch the matching variant below. For `Engine: mimo`, the model, variant, and `mimo:<handle>` are **inputs the conductor already resolved** (pre-dispatch: it ran `mimo-resolve`, picked model+variant, minted the per-stage handle `<stage>-<rand4>`, and recorded `mimo:<handle>` on the stage line) and passes to the stage-runner — the stage-runner does **not** resolve them here.
+
+### 4a. Engine: codex
+
+**Fresh run.** The codex runtime is the `task` helper that `codex:rescue` wraps; call it directly so you can target the worktree with `--cwd`:
 ```
 CODEX=$(fd -t f codex-companion.mjs ~/.claude/plugins/marketplaces/openai-codex 2>/dev/null | head -1)
 node "$CODEX" task "Implement this plan fully and exactly:
@@ -36,11 +40,37 @@ $(cat docs/plans/$S-plan.md)"
 ```
 `--resume-last` (what `codex:rescue --resume` adds) continues the **last** codex thread — sprints run one stage's codex at a time, so "last" is this stage's. Keep the partial worktree (uncommitted); never commit or land a partial stage. Cap resumes too: after ~2 that still leave the plan unfinished, report `blocked: codex stalled, <N>/<total> files, worktree retained`.
 
-**Codex absent.** The stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor).
+### 4b. Engine: mimo
+
+The stage-runner dispatches `mimo-code:mimo-delegate` as a **nested subagent** (the same nesting §5 uses for the review subagent). mimo-delegate runs ONE mimo session via the launcher and writes files directly into `$WT`; the stage-runner does **not** edit files itself in this variant.
+
+**Fresh run.** Dispatch `mimo-delegate` with:
+```
+handle:  <the mimo:<handle> recorded on the stage line>   # matches [a-z0-9_-]+, form <stage>-<rand4>
+cwd:     <abs $WT>
+model:   <passed from the conductor>
+variant: <passed from the conductor>
+prompt:  $(cat docs/plans/$S-plan.md)
+mode:    fresh
+```
+
+**Resume a stuck or stopped session.** If the stage stopped/unfinished, re-dispatch `mimo-delegate` with the **same handle** and `mode: resume`. **CRITICAL: on resume do NOT pass `model` or `variant`** — mimo-delegate resumes by the session id recorded against the handle and takes neither. Never start a fresh session to "resume":
+```
+handle:  <same mimo:<handle> as the fresh run>
+cwd:     <abs $WT>
+prompt:  "Your previous run stopped before finishing; re-read the plan and the
+          current worktree state, do only what remains, and complete it fully."
+mode:    resume
+```
+Cap resumes like codex: after ~2 that still leave the plan unfinished, report `blocked: mimo stalled, <N>/<total>, worktree retained`.
+
+### 4c. Engine: bare
+
+When neither executor is selected/available, the stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor).
 
 ## 5. Review
 
-**In a subagent — mandatory.** The stage-runner dispatches the review as a subagent — the same dispatch it already uses for a `general-purpose` worktree subagent when codex is absent (§4). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so review runs *before* the commit in §7.
+**In a subagent — mandatory.** The stage-runner dispatches the review as a subagent — the same dispatch it already uses for a `general-purpose` worktree subagent when codex is absent (§4c). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so review runs *before* the commit in §7.
 
 `$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is codex's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
 ```
@@ -79,10 +109,10 @@ git -C "$REPO" worktree remove "$WT" && git -C "$REPO" branch -d "$BR"
 
 ## Effort Scaling
 
-| Stage risk | codex effort (step 4) | review effort (step 5) |
+| Stage risk | executor effort/variant (step 4) | review effort (step 5) |
 |---|---|---|
 | low / cosmetic | high | high |
 | normal | xhigh | xhigh |
 | risky / wide blast radius | xhigh | max |
 
-`ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
+codex maps these to `--effort`; mimo maps them to `--variant` (the conductor passes the resolved variant to the stage-runner). `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
