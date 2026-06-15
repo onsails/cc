@@ -45,6 +45,7 @@ if (session === "badid") {
 const sid = session || "ses_fake";
 for (const obj of [
   { sessionID: sid, type: "step_start" },
+  { sessionID: sid, type: "tool_use", part: { tool: "edit", path: "src/a.ts" } },
   { sessionID: sid, type: "text", part: { text: "working" } },
   { sessionID: sid, type: "step_finish", part: { reason: "stop" } },
 ]) {

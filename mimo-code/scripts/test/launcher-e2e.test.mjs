@@ -24,13 +24,21 @@ function stateFileDir(state) {
   return path.join(root, fs.readdirSync(root)[0]);
 }
 
-test("fresh delegate captures the session id and streams output", () => {
+test("fresh delegate captures the session id and emits concise progress", () => {
   const state = freshState();
   const res = runLauncher(["--handle", "h1", "--cwd", process.cwd(), "--", "build it"], state);
   assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /"sessionID":"ses_fake"/);
-  assert.match(res.stdout, /"text":"working"/);
-  assert.equal(fs.readFileSync(path.join(stateFileDir(state), "h1.sessionid"), "utf8"), "ses_fake");
+  // stdout is the concise human-readable progress trace, not raw NDJSON.
+  assert.match(res.stdout, /\[mimo\] ■ step finished \(stop\)/);
+  assert.match(res.stdout, /\[mimo\] ⚙ edit src\/a\.ts/);
+  assert.match(res.stdout, /\[mimo\] · working/);
+  assert.doesNotMatch(res.stdout, /"sessionID"/);
+  // the full raw NDJSON still lands in the .ndjson log, sessionID included.
+  const dir = stateFileDir(state);
+  const ndjson = fs.readFileSync(path.join(dir, "h1.ndjson"), "utf8");
+  assert.match(ndjson, /"sessionID":"ses_fake"/);
+  assert.match(ndjson, /"text":"working"/);
+  assert.equal(fs.readFileSync(path.join(dir, "h1.sessionid"), "utf8"), "ses_fake");
 });
 
 test("resume reads the sidecar and forwards --session", () => {
