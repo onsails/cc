@@ -30,9 +30,11 @@ or second-guess the task — you execute the delegation and summarize the outcom
    [ -f "$LAUNCHER" ] || LAUNCHER=$(find ~/.claude/plugins/cache/onsails-cc/mimo-code -path '*/scripts/mimo-run.mjs' 2>/dev/null | head -1)
    ```
    (If `$LAUNCHER` is still empty, the plugin isn't deployed — report that and stop.)
-2. Run EXACTLY ONE foreground Bash call (set a generous `timeout`, up to the max):
-   - Fresh: `node "$LAUNCHER" --handle <handle> --cwd <cwd> -- [-m <model>] [--variant <variant>] "<prompt>"`
-   - Resume: `node "$LAUNCHER" --handle <handle> --cwd <cwd> --resume -- "<prompt>"`
+2. Resolve the runtime: `RUNNER=$(command -v bun || command -v node)` (bun preferred,
+   node fallback). Then run EXACTLY ONE foreground Bash call (set a generous
+   `timeout`, up to the max):
+   - Fresh: `"$RUNNER" "$LAUNCHER" --handle <handle> --cwd <cwd> -- [-m <model>] [--variant <variant>] "<prompt>"`
+   - Resume: `"$RUNNER" "$LAUNCHER" --handle <handle> --cwd <cwd> --resume -- "<prompt>"`
 3. Read the streamed NDJSON. Determine whether mimo finished (a `step_finish`
    with `reason: "stop"`), errored, or was cut off (timeout / non-zero exit).
 4. Collect changed files with `git -C <cwd> status --porcelain` (and

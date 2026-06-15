@@ -1,4 +1,4 @@
-# codex-sprint — Mechanics
+# sprint — Mechanics
 
 Exact commands for per-stage lifecycle steps 3–7. The conductor never runs these; the **stage-runner subagent** does, **from the repo root**.
 
@@ -15,7 +15,11 @@ git worktree add -b "$BR" "$WT" feat/<sprint> || { echo "blocked: cannot isolate
 
 ## 4. Execute
 
-**Codex present.** The codex runtime is the `task` helper that `codex:rescue` wraps; call it directly so you can target the worktree with `--cwd`:
+Read the engine from the sprint-doc `Engine:` header and dispatch the matching variant below. For `Engine: mimo`, the model, variant, and `mimo:<handle>` are **inputs the conductor already resolved** (pre-dispatch: it ran `mimo-resolve`, picked model+variant, minted the per-stage handle `<stage>-<rand4>`, and recorded `mimo:<handle>` on the stage line) and passes to the stage-runner — the stage-runner does **not** resolve them here.
+
+### 4a. Engine: codex
+
+**Fresh run.** The codex runtime is the `task` helper that `codex:rescue` wraps; call it directly so you can target the worktree with `--cwd`:
 ```
 CODEX=$(fd -t f codex-companion.mjs ~/.claude/plugins/marketplaces/openai-codex 2>/dev/null | head -1)
 node "$CODEX" task "Implement this plan fully and exactly:
@@ -36,11 +40,50 @@ $(cat docs/plans/$S-plan.md)"
 ```
 `--resume-last` (what `codex:rescue --resume` adds) continues the **last** codex thread — sprints run one stage's codex at a time, so "last" is this stage's. Keep the partial worktree (uncommitted); never commit or land a partial stage. Cap resumes too: after ~2 that still leave the plan unfinished, report `blocked: codex stalled, <N>/<total> files, worktree retained`.
 
-**Codex absent.** The stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor).
+### 4b. Engine: mimo
+
+The stage-runner dispatches `mimo-code:mimo-delegate` as a **nested subagent** — a real `Agent(...)` call mirroring §5's review dispatch. mimo-delegate runs ONE mimo session via the launcher and reads its inputs (`handle`, `cwd`, `model`/`variant`, `prompt`, `mode`) from the **free-text prompt body**, so put them there. It writes files directly into `$WT`; the stage-runner does **not** edit files itself in this variant.
+
+`handle` is the bare `<handle>` from the `mimo:<handle>` token on the stage line — **drop the `mimo:` prefix** (mimo-delegate wants `<handle>` matching `[a-z0-9_-]+`, form `<stage>-<rand4>`). `cwd` must be **absolute**: mimo-delegate runs detached and hard-requires it, and `$WT` is the *relative* `.worktrees/$S`, so pass `"$REPO/$WT"` (`$REPO` was captured absolute in §3).
+
+**Fresh run.**
+```
+Agent(
+  subagent_type: "mimo-code:mimo-delegate",
+  description: "execute $S",
+  prompt: """
+  mode: fresh
+  handle: <handle>          # bare handle from mimo:<handle> on the stage line
+  cwd: "$REPO/$WT"          # absolute
+  model: <model from conductor>
+  variant: <variant from conductor>
+  Implement this plan fully and exactly:
+  $(cat docs/plans/$S-plan.md)
+  """)
+```
+
+**Resume a stuck or stopped session.** If the stage stopped/unfinished, re-dispatch with the **same handle** and `mode: resume`. **CRITICAL: on resume do NOT pass `model` or `variant`** — mimo-delegate resumes by the session id recorded against the handle and takes neither. Never start a fresh session to "resume". mimo retains the plan and worktree context through that recorded session, so the continuation prompt need only say "finish what remains" — unlike codex, re-feeding the full plan is unnecessary:
+```
+Agent(
+  subagent_type: "mimo-code:mimo-delegate",
+  description: "resume $S",
+  prompt: """
+  mode: resume
+  handle: <handle>          # same bare handle as the fresh run
+  cwd: "$REPO/$WT"          # absolute
+  Your previous run stopped before finishing; re-read the plan and the current
+  worktree state, do only what remains, and complete it fully.
+  """)
+```
+Cap resumes like codex: after ~2 that still leave the plan unfinished, report `blocked: mimo stalled, <N>/<total>, worktree retained`.
+
+### 4c. Engine: bare
+
+When neither executor is selected/available, the stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor).
 
 ## 5. Review
 
-**In a subagent — mandatory.** The stage-runner dispatches the review as a subagent — the same dispatch it already uses for a `general-purpose` worktree subagent when codex is absent (§4). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so review runs *before* the commit in §7.
+**In a subagent — mandatory.** The stage-runner dispatches the review as a subagent — the same dispatch it already uses for a `general-purpose` worktree subagent when codex is absent (§4c). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so review runs *before* the commit in §7.
 
 `$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is codex's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
 ```
@@ -79,10 +122,10 @@ git -C "$REPO" worktree remove "$WT" && git -C "$REPO" branch -d "$BR"
 
 ## Effort Scaling
 
-| Stage risk | codex effort (step 4) | review effort (step 5) |
+| Stage risk | executor effort/variant (step 4) | review effort (step 5) |
 |---|---|---|
 | low / cosmetic | high | high |
 | normal | xhigh | xhigh |
 | risky / wide blast radius | xhigh | max |
 
-`ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
+codex maps these to `--effort`; mimo maps them to `--variant` (the conductor passes the resolved variant to the stage-runner). `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.

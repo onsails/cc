@@ -15,17 +15,18 @@ Strict Rust development standards with FAIL FAST error handling.
 
 [Full documentation →](./rust-dev/README.md)
 
-### codex-sprint
+### sprint
 
-Orchestrate one large milestone as staged brainstorm/plan/codex-execute cycles in a living sprint doc.
+Orchestrate one large milestone as staged brainstorm/plan/execute cycles in a living sprint doc.
 
 - Decomposes a multistage milestone into stages; resumes across sessions from the doc
-- Per stage: brainstorm spec → write plan → codex implements → `/code-review --fix` → verify → land
+- Per stage: brainstorm spec → write plan → executor implements → `/code-review --fix` → verify → land
 - Keeps the main context a lean conductor; runs each stage in an isolated worktree subagent
-- Delegates implementation to codex; degrades gracefully without `superpowers`/`codex`
-- Pairs with the official Codex plugin ([`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc), `codex@openai-codex`) for delegated execution
+- Delegates implementation to an **executor**: mimo (hard dependency, always present) or codex (optional)
+- Engine chosen by arg (`/sprint mimo|codex`), else asked when codex is present, else mimo; recorded in the sprint doc for resume
+- Depends on `mimo-code` (auto-installed); degrades gracefully without `superpowers`/`codex`
 
-[Full documentation →](./codex-sprint/README.md)
+[Full documentation →](./sprint/README.md)
 
 ### mimo-code
 
@@ -44,11 +45,11 @@ Delegate write-capable coding sessions to the [`mimo` CLI](https://github.com/Xi
 ```bash
 claude plugin marketplace add https://github.com/onsails/cc
 claude plugin install rust-dev@onsails-cc
-claude plugin install codex-sprint@onsails-cc
+claude plugin install sprint@onsails-cc
 claude plugin install mimo-code@onsails-cc
 ```
 
-`codex-sprint` delegates execution to the official Codex plugin — install it from its own marketplace:
+Installing `sprint` auto-installs its `mimo-code` dependency. To also use the **codex** engine, install the official Codex plugin from its own marketplace (optional):
 
 ```bash
 claude plugin marketplace add https://github.com/openai/codex-plugin-cc

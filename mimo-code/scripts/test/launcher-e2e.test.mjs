@@ -54,6 +54,15 @@ test("resume without a sidecar fails clearly", () => {
   assert.match(res.stderr, /no recorded session/);
 });
 
+test("resolve-models prints intersected models as JSON", () => {
+  const state = freshState();
+  const res = runLauncher(["resolve-models", "--json"], state);
+  assert.equal(res.status, 0, res.stderr);
+  const out = JSON.parse(res.stdout);
+  assert.ok(out.authenticatedProviders.includes("openai"), res.stdout);
+  assert.ok(out.options.some((o) => o.model.startsWith("openai/")), res.stdout);
+});
+
 test("bad session exits non-zero and does not overwrite the sidecar", () => {
   const state = freshState();
   runLauncher(["--handle", "h2", "--cwd", process.cwd(), "--", "first"], state);

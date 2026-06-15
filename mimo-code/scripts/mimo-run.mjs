@@ -5,7 +5,7 @@
 // streams mimo's output through unchanged. Owns only --handle/--cwd/--resume;
 // everything after `--` is forwarded to `mimo run` verbatim. The mimo binary is
 // `mimo` unless MIMO_BIN overrides it (used by tests + nix path pinning).
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -79,6 +79,66 @@ export function buildMimoArgs({ resume, forward, sidPath }) {
     return [...base, "--session", sid, ...forward];
   }
   return [...base, ...forward];
+}
+
+// `mimo run --variant <v>` selects provider-specific reasoning effort. It is not
+// enumerable via the CLI, so we ship this static guidance list.
+const VARIANTS = ["minimal", "low", "medium", "high", "max"];
+
+// resolveModels: pure intersection of authenticated providers (parsed from the
+// `providers list` box text) with available models (`models` plain text). The
+// real `mimo` has no --json, so we parse raw TEXT. See Phase 0 discovery.
+export function resolveModels({ providersRaw, modelsRaw }) {
+  // eslint-disable-next-line no-control-regex
+  const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
+  const authenticatedProviders = [];
+  for (const raw of stripAnsi(providersRaw).split("\n")) {
+    // Anchor to line start: drop leading box-drawing glyphs/whitespace, then the
+    // bullet must be the FIRST real glyph. This rejects `●` appearing mid-text
+    // (e.g. a `legend: ● = active` footer) from minting phantom providers.
+    const rest = raw.replace(/^[┌│└├─\s]*/, "");
+    if (!rest.startsWith("●")) continue;
+    // First whitespace-delimited token after the bullet is the display name.
+    const name = rest.slice("●".length).trim().split(/\s+/)[0] || "";
+    const provider = name.toLowerCase();
+    if (!/^[a-z0-9_-]+$/.test(provider)) continue;
+    if (!authenticatedProviders.includes(provider)) authenticatedProviders.push(provider);
+  }
+
+  const authed = new Set(authenticatedProviders);
+  const options = [];
+  for (const line of modelsRaw.split("\n")) {
+    const model = line.trim();
+    if (!/^\S+\/\S+$/.test(model)) continue;
+    const provider = model.slice(0, model.indexOf("/"));
+    if (authed.has(provider)) options.push({ provider, model });
+  }
+
+  return { authenticatedProviders, options, variants: VARIANTS };
+}
+
+// Spawn `mimo <args>` and resolve with its full stdout, rejecting on non-zero exit.
+function mimoStdout(mimoBin, args) {
+  return new Promise((resolve, reject) => {
+    execFile(mimoBin, args, { maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error(`\`mimo ${args.join(" ")}\` failed: ${stderr.trim() || err.message}`));
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+async function resolveModelsMain() {
+  const mimoBin = process.env.MIMO_BIN || "mimo";
+  const [providersRaw, modelsRaw] = await Promise.all([
+    mimoStdout(mimoBin, ["providers", "list"]),
+    mimoStdout(mimoBin, ["models"]),
+  ]);
+  const result = resolveModels({ providersRaw, modelsRaw });
+  process.stdout.write(JSON.stringify(result) + "\n");
 }
 
 async function main() {
@@ -157,5 +217,9 @@ async function main() {
 
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (invokedDirectly) {
-  main().catch((e) => { process.stderr.write(`mimo-run: ${e.message}\n`); process.exit(2); });
+  // resolve-models is a sibling mode, not a forwarded arg: it shells out to
+  // `mimo providers list` + `mimo models` and emits JSON. --json is accepted but
+  // ignored (output is always JSON). parseArgs is reserved for the `run` path.
+  const entry = process.argv[2] === "resolve-models" ? resolveModelsMain : main;
+  entry().catch((e) => { process.stderr.write(`mimo-run: ${e.message}\n`); process.exit(2); });
 }
