@@ -72,7 +72,9 @@ the same engine without re-asking:
 ```
 # <Milestone> — Sprint
 Integration: feat/<sprint>  ·  Base: master
-Engine: mimo (model: <provider/model>, variant: <v>[, pinned])   # or: Engine: codex
+Engine: codex
+Engine: mimo                                                     # model resolved per stage
+Engine: mimo (model: <provider/model>, variant: <v>, pinned)     # pinned: reused every stage
 ```
 
 ## mimo model resolution
