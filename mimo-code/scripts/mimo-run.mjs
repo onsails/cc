@@ -81,6 +81,53 @@ export function buildMimoArgs({ resume, forward, sidPath }) {
   return [...base, ...forward];
 }
 
+// formatProgress: map ONE raw mimo output line to a concise, human-readable
+// progress string (or null to suppress). Pure + defensive — missing fields must
+// never throw. The full raw NDJSON still goes to the log file; only stdout is
+// distilled to this trace so a watching subagent reads steps, not raw JSON.
+export function formatProgress(line) {
+  if (line == null || String(line).trim() === "") return null;
+
+  let obj;
+  try {
+    obj = JSON.parse(line);
+  } catch {
+    return "[mimo] " + line; // mimo's own non-JSON notes — pass through, prefixed
+  }
+  if (!obj || typeof obj !== "object") return "[mimo] " + line;
+
+  const truncate = (s, n) => {
+    const str = String(s);
+    return str.length > n ? str.slice(0, n - 1) + "…" : str;
+  };
+  const firstLineTruncated = (s, n) => truncate(String(s).split("\n")[0], n);
+  const part = obj.part && typeof obj.part === "object" ? obj.part : {};
+  const type = obj.type;
+
+  switch (type) {
+    case "step_start":
+      return "[mimo] ▸ step started";
+    case "step_finish":
+      return "[mimo] ■ step finished" + (part.reason ? ` (${part.reason})` : "");
+    case "text": {
+      const text = part.text;
+      if (typeof text !== "string" || text.trim() === "") return null;
+      return "[mimo] · " + firstLineTruncated(text, 80);
+    }
+    default: {
+      if (typeof type === "string" && type.includes("tool")) {
+        const name = part.tool || obj.name || obj.tool || "tool";
+        const args = part.args && typeof part.args === "object" ? part.args : {};
+        const target = part.path || part.file || args.path;
+        const suffix = target ? " " + truncate(target, 60) : "";
+        return "[mimo] ⚙ " + name + suffix;
+      }
+      if (typeof type === "string" && type !== "") return "[mimo] " + type;
+      return "[mimo] " + line;
+    }
+  }
+}
+
 // `mimo run --variant <v>` selects provider-specific reasoning effort. It is not
 // enumerable via the CLI, so we ship this static guidance list.
 const VARIANTS = ["minimal", "low", "medium", "high", "max"];
@@ -179,8 +226,9 @@ async function main() {
 
   const rl = readline.createInterface({ input: child.stdout });
   rl.on("line", (line) => {
-    process.stdout.write(line + "\n");   // passthrough, as-is
-    log.write(line + "\n");
+    const p = formatProgress(line);           // stdout: concise human-readable trace
+    if (p !== null) process.stdout.write(p + "\n");
+    log.write(line + "\n");                    // log: full raw NDJSON, unchanged
     if (!captured) {
       try {
         const obj = JSON.parse(line);

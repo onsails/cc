@@ -1,6 +1,6 @@
 # sprint — Mechanics
 
-Exact commands for per-stage lifecycle steps 3–7. The conductor never runs these; the **stage-runner subagent** does, **from the repo root**.
+Exact commands for per-stage lifecycle steps 3–7. The conductor never runs these; the **`sprint:stage-runner` subagent** does, **from the repo root**. That stage-runner carries the **`Agent` tool** (so it can dispatch the executor and review as nested subagents — a plain `general-purpose` subagent has no `Agent` tool and cannot) and has **no `model` of its own** (it inherits the main/session model, so the §5 review inherits it too).
 
 Slugs: `<sprint>` = milestone slug (e.g. `auth`); `<stage>` = stage slug (e.g. `schema`). Let `S=<NN>-<stage>`, `WT=.worktrees/$S`, `BR=feat/<sprint>-$S`. The **stage** branch `$BR` (e.g. `feat/auth-01-schema`) is distinct from the **integration** branch `feat/<sprint>` (e.g. `feat/auth`). Run everything from the **repo root**; never `cd` into `$WT` unscoped — worktree-scoped commands use `git -C "$WT"` or a `(cd "$WT" && …)` subshell, and the land commands (§7) use `git -C "$REPO"` so they always act on the main tree, never the worktree.
 
@@ -42,7 +42,7 @@ $(cat docs/plans/$S-plan.md)"
 
 ### 4b. Engine: mimo
 
-The stage-runner dispatches `mimo-code:mimo-delegate` as a **nested subagent** — a real `Agent(...)` call mirroring §5's review dispatch. mimo-delegate runs ONE mimo session via the launcher and reads its inputs (`handle`, `cwd`, `model`/`variant`, `prompt`, `mode`) from the **free-text prompt body**, so put them there. It writes files directly into `$WT`; the stage-runner does **not** edit files itself in this variant.
+The stage-runner dispatches `mimo-code:mimo-delegate` as a **nested subagent**, **foreground** (the stage-runner blocks until it returns — never a harness background flag, which would bounce monitoring up to the conductor). This works because the stage-runner is `sprint:stage-runner`, which carries the `Agent` tool. mimo-delegate runs ONE mimo session via the launcher and reads its inputs (`handle`, `cwd`, `model`/`variant`, `prompt`, `mode`) from the **free-text prompt body**, so put them there. It writes files directly into `$WT`; the stage-runner does **not** edit files itself in this variant. mimo-delegate returns `done` only when mimo stopped **and** the worktree diff is non-empty — an empty diff (mimo stopped mid-plan) comes back `incomplete`, so resume it; do not treat empty as done.
 
 `handle` is the bare `<handle>` from the `mimo:<handle>` token on the stage line — **drop the `mimo:` prefix** (mimo-delegate wants `<handle>` matching `[a-z0-9_-]+`, form `<stage>-<rand4>`). `cwd` must be **absolute**: mimo-delegate runs detached and hard-requires it, and `$WT` is the *relative* `.worktrees/$S`, so pass `"$REPO/$WT"` (`$REPO` was captured absolute in §3).
 
@@ -83,12 +83,15 @@ When neither executor is selected/available, the stage-runner implements `docs/p
 
 ## 5. Review
 
-**In a subagent — mandatory.** The stage-runner dispatches the review as a subagent — the same dispatch it already uses for a `general-purpose` worktree subagent when codex is absent (§4c). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (codex's output), so review runs *before* the commit in §7.
+**In a separate subagent — mandatory.** The stage-runner dispatches the review as a nested `general-purpose` subagent (it has the `Agent` tool for exactly this). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (the executor's output), so review runs *before* the commit in §7.
 
-`$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is codex's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
+**Model:** dispatch the review with **NO `model` override** so it inherits the stage-runner's model — which is the **main/session model** (the stage-runner itself has no model and inherited it from the conductor). The review is the quality gate; it runs at the main context's model, not a downgraded one. Setting any `model` here breaks that.
+
+`$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is the executor's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
 ```
 Agent(
   subagent_type: "general-purpose",
+  # NO model field → inherits the stage-runner's model = the main/session model
   mode: "acceptEdits",        # → "bypassPermissions" only if a *command* prompt stalls it; safe, worktree is disposable
   description: "review $S",
   prompt: """

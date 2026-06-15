@@ -2,7 +2,7 @@
 name: mimo-resolve
 model: sonnet
 description: Resolves authenticated provider∩model options + variants for mimo by running the mimo-run resolve-models launcher; gathering only, the conductor asks/auto-picks.
-allowedTools:
+tools:
   - Bash
   - Read
   - Glob
