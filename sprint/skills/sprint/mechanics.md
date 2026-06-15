@@ -42,25 +42,38 @@ $(cat docs/plans/$S-plan.md)"
 
 ### 4b. Engine: mimo
 
-The stage-runner dispatches `mimo-code:mimo-delegate` as a **nested subagent** (the same nesting §5 uses for the review subagent). mimo-delegate runs ONE mimo session via the launcher and writes files directly into `$WT`; the stage-runner does **not** edit files itself in this variant.
+The stage-runner dispatches `mimo-code:mimo-delegate` as a **nested subagent** — a real `Agent(...)` call mirroring §5's review dispatch. mimo-delegate runs ONE mimo session via the launcher and reads its inputs (`handle`, `cwd`, `model`/`variant`, `prompt`, `mode`) from the **free-text prompt body**, so put them there. It writes files directly into `$WT`; the stage-runner does **not** edit files itself in this variant.
 
-**Fresh run.** Dispatch `mimo-delegate` with:
+`handle` is the bare `<handle>` from the `mimo:<handle>` token on the stage line — **drop the `mimo:` prefix** (mimo-delegate wants `<handle>` matching `[a-z0-9_-]+`, form `<stage>-<rand4>`). `cwd` must be **absolute**: mimo-delegate runs detached and hard-requires it, and `$WT` is the *relative* `.worktrees/$S`, so pass `"$REPO/$WT"` (`$REPO` was captured absolute in §3).
+
+**Fresh run.**
 ```
-handle:  <the mimo:<handle> recorded on the stage line>   # matches [a-z0-9_-]+, form <stage>-<rand4>
-cwd:     <abs $WT>
-model:   <passed from the conductor>
-variant: <passed from the conductor>
-prompt:  $(cat docs/plans/$S-plan.md)
-mode:    fresh
+Agent(
+  subagent_type: "mimo-code:mimo-delegate",
+  description: "execute $S",
+  prompt: """
+  mode: fresh
+  handle: <handle>          # bare handle from mimo:<handle> on the stage line
+  cwd: "$REPO/$WT"          # absolute
+  model: <model from conductor>
+  variant: <variant from conductor>
+  Implement this plan fully and exactly:
+  $(cat docs/plans/$S-plan.md)
+  """)
 ```
 
-**Resume a stuck or stopped session.** If the stage stopped/unfinished, re-dispatch `mimo-delegate` with the **same handle** and `mode: resume`. **CRITICAL: on resume do NOT pass `model` or `variant`** — mimo-delegate resumes by the session id recorded against the handle and takes neither. Never start a fresh session to "resume":
+**Resume a stuck or stopped session.** If the stage stopped/unfinished, re-dispatch with the **same handle** and `mode: resume`. **CRITICAL: on resume do NOT pass `model` or `variant`** — mimo-delegate resumes by the session id recorded against the handle and takes neither. Never start a fresh session to "resume". mimo retains the plan and worktree context through that recorded session, so the continuation prompt need only say "finish what remains" — unlike codex, re-feeding the full plan is unnecessary:
 ```
-handle:  <same mimo:<handle> as the fresh run>
-cwd:     <abs $WT>
-prompt:  "Your previous run stopped before finishing; re-read the plan and the
-          current worktree state, do only what remains, and complete it fully."
-mode:    resume
+Agent(
+  subagent_type: "mimo-code:mimo-delegate",
+  description: "resume $S",
+  prompt: """
+  mode: resume
+  handle: <handle>          # same bare handle as the fresh run
+  cwd: "$REPO/$WT"          # absolute
+  Your previous run stopped before finishing; re-read the plan and the current
+  worktree state, do only what remains, and complete it fully.
+  """)
 ```
 Cap resumes like codex: after ~2 that still leave the plan unfinished, report `blocked: mimo stalled, <N>/<total>, worktree retained`.
 
