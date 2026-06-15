@@ -1,6 +1,7 @@
 ---
 name: sprint
 description: Use when one milestone is too large for a single spec or plan and needs several brainstorm-and-plan rounds before it ships — a long, multistage effort spanning sessions where the coding is handed off to an executor (codex or mimo) while you stay the conductor. Triggers on "long multistage project", "many brainstorms and plans", "milestone with multiple stages", "resume where I left off", "delegate implementation to codex or mimo".
+argument-hint: "[mimo|codex] [<provider/model>] [variant] [milestone description]"
 ---
 
 # sprint
@@ -20,6 +21,16 @@ A milestone too big for one spec-and-plan is run as a **sprint**: a series of st
 - You delegate implementation to an **executor** (codex or mimo) while steering design.
 
 **Not for:** a single-spec feature; one small task (`codex:rescue` directly).
+
+## Invocation arguments
+
+Raw slash-command arguments: `$ARGUMENTS`
+
+Parse them as `[mimo|codex] [<provider/model>] [variant] [milestone description]` (empty when the skill was triggered by description match rather than `/sprint` — then read intent from the user's message):
+
+- A leading `mimo` or `codex` token → the **engine** (see [Engine selection](#engine-selection)).
+- A `<provider/model>` token (contains `/`, mimo only) → **pin** that model for the whole sprint; a following `minimal|low|medium|high|max` token → the pinned **variant**. A pin records `Engine: mimo (model: …, variant: …, pinned)` and skips per-stage model resolution.
+- Remaining text → the **milestone description** that seeds the decomposition brainstorm. No description **and** an existing sprint doc → resume at the first non-done stage.
 
 ## Capability Probes (run FIRST, every invocation)
 
