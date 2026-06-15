@@ -27,7 +27,7 @@ the conductor's context.
    (If `$LAUNCHER` is still empty, the plugin isn't deployed — report that and stop.)
 2. Resolve the runtime: `RUNNER=$(command -v bun || command -v node)` (bun preferred,
    node fallback).
-3. Run EXACTLY ONE Bash call:
+3. Run EXACTLY ONE Bash call (`--json` is accepted but ignored; the launcher always emits JSON):
    ```
    "$RUNNER" "$LAUNCHER" resolve-models --json
    ```
