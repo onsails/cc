@@ -32,10 +32,13 @@ Interpret as `[provider/model] [variant] <task>` (empty when triggered by descri
    and `variants` — keeping the catalogue output out of the conductor's context.
    Empty options (no authenticated provider) → STOP and tell the user to run
    `mimo providers login`.
-2. Using the returned `options` (the authenticated intersection):
+2. Using the returned `options` (the authenticated intersection — count **models**,
+   not providers):
    **Exactly one usable model** → auto-pick (asking is pointless). **More than one →
    ASK the user** which one (AskUserQuestion when ≤4; else print the grouped list and
-   have them name an id).
+   have them name an id). One authenticated provider offering several models is still
+   "more than one" → ASK; "low-risk"/"mechanical"/cost or proactivity never justify a
+   silent pick.
 3. **Ask effort/variant** too, offering a "default" option that omits `--variant`.
 
 The conductor does the asking/auto-pick itself — `mimo-resolve` only gathers,

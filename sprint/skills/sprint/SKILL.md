@@ -42,7 +42,7 @@ Probe; never assume. Adapt, and tell the user to install whatever's missing.
 | executor: codex | `codex:rescue` in skills list? | not required — codex is optional; mimo is the dependency-guaranteed default |
 | executor: mimo | `mimo-code:mimo-delegate` available? (hard dependency — should always be true) | if absent, the dependency failed to install — tell the user to reinstall sprint |
 | codex SDD | *(only if engine=codex)* `fd -t d subagent-driven-development ~/.codex/skills ~/.claude/plugins/marketplaces/openai-codex 2>/dev/null` | hand codex the whole plan |
-| mimo model | *(only if engine=mimo, unless pinned)* dispatch `mimo-code:mimo-resolve` | conductor ASKs / auto-picks |
+| mimo model | *(only if engine=mimo, unless pinned)* dispatch `mimo-code:mimo-resolve` | **ASK the user** unless `options` has exactly one model (then auto-pick) — one provider ≠ one option |
 
 ## Starting a Sprint
 
@@ -100,7 +100,7 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 7. **Commit & land** → commit the worktree changes (the executor/review leave them uncommitted), merge the branch into the integration branch, remove the worktree.
 8. **Update doc** (main) → stage → `done` + merge SHA; append decisions/questions; commit the doc; next stage.
 
-**Conductor pre-dispatch (engine=mimo, unless pinned):** before dispatching the stage-runner, the conductor dispatches `mimo-resolve`, then ASKs/auto-picks model+variant from its `options`/`variants`, generates a unique per-stage handle `<stage>-<rand4>`, and records `mimo:<handle>` on the stage line. A **pinned** sprint (`Engine: mimo (… pinned)`) skips the resolve+ASK and reuses the pinned model+variant every stage (still minting a fresh handle per stage). For `Engine: codex` there's no model resolution.
+**Conductor pre-dispatch (engine=mimo, unless pinned):** before dispatching the stage-runner, the conductor dispatches `mimo-resolve` to gather the authenticated `options`, then **selects model+variant by this rule:** `options` has **exactly one** model → auto-pick it (asking is pointless); `options` has **more than one** → **ASK the user** (`AskUserQuestion` when ≤4 models, else print the grouped list and have them name an id). **One authenticated provider offering several models is still "more than one" → ASK; never collapse a provider to a single auto-pick.** The proactive output style, a "low-risk"/"mechanical"/"bounded"/"trivial" stage, saving cost, or "not wanting to interrupt" are **not** reasons to skip the ASK — the user delegated execution to mimo but still chooses the model unless they pinned one. ASK the variant the same way (offer a "default" that omits `--variant`). Then generate a unique per-stage handle `<stage>-<rand4>` and record `mimo:<handle>` on the stage line. A **pinned** sprint (`Engine: mimo (… pinned)`) is the *only* thing that skips the resolve+ASK: it reuses the pinned model+variant every stage (still minting a fresh handle per stage). For `Engine: codex` there's no model resolution.
 
 **Dispatch model:** per stage the conductor spawns **one** `general-purpose` stage-runner subagent that executes steps 3–7 from the repo root and returns a **terse** report: `landed @sha` / `blocked: <reason>` / files-touched count. Within that, **step 5's `/code-review <high|xhigh|max> --fix` runs in its own subagent** the stage-runner dispatches (Agent/Task tool, cd into `$WT`). The conductor runs only steps 1–2, the pre-dispatch resolve, and 8 — never the Mechanics commands. **No diffs or logs reach the conductor.**
 
@@ -114,6 +114,7 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 | Committing stage code straight onto the current/integration branch (no worktree, no stage branch) | Violates the isolation invariant. Stage code is committed on `$BR` in `$WT` and only reaches the integration branch via §7 `merge --no-ff`. Can't isolate → `blocked`, never commit in the main tree. |
 | Review run inline or as a `claude -p` subprocess instead of a subagent | Step 5 is **mandatory in a nested Agent/Task subagent** (mechanics §5) — keeps diffs/fixes out of the stage-runner's context. |
 | One giant spec/plan for the whole milestone | The anti-pattern this skill replaces. Decompose into stages. |
+| Auto-picking the mimo model because the stage is "low-risk"/"mechanical" or to avoid interrupting | The user chose the engine, not the model. Auto-pick **only** when `options` has exactly one model; several models (even all from one authenticated provider) → **ASK**. Proactivity and "right-sizing cost" never override this — only an explicit user pin does. |
 | Merging/removing the worktree before committing | The executor and `--fix` leave changes uncommitted — commit first (mechanics §7). |
 | Marking a stage `done` before it merged + passed verify | `done` = merged **and** green. |
 | Executor stopped/stalled mid-stage → reported `blocked` or re-ran fresh | Resume the **same** session first: codex `task --resume-last`; mimo re-dispatch `mimo-delegate` with the recorded handle (mechanics §4). Fresh loses the executor's context and may clobber the partial edits. |
