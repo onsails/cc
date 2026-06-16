@@ -1,6 +1,15 @@
 # sprint — Mechanics
 
-Exact commands for per-stage lifecycle steps 3–7. The conductor never runs these; the **`sprint:stage-runner` subagent** does, **from the repo root**. That stage-runner carries the **`Agent` tool** (so it can dispatch the executor and review as nested subagents — a plain `general-purpose` subagent has no `Agent` tool and cannot) and has **no `model` of its own** (it inherits the main/session model, so the §5 review inherits it too).
+Exact commands for per-stage lifecycle steps 3–7, run **from the repo root**. The COMMANDS are identical in both modes; only **who dispatches each step** differs (see §0).
+
+## 0. Orchestration modes (read the `Nesting:` header)
+
+WHO runs steps 3–7 depends on the sprint-doc `Nesting:` header (set once by the nesting probe — see SKILL Capability Probes):
+
+- **`Nesting: yes` (nested):** the conductor dispatches **one `sprint:stage-runner` subagent** that runs all of §3–§7 and dispatches the executor (§4) and review (§5) as **nested** subagents. The stage-runner carries the **`Agent` tool** and has **no `model`** (inherits the main/session model, so the §5 review inherits it too). The conductor sees only its terse report.
+- **`Nesting: no` (flat):** subagents can't dispatch subagents (e.g. Claude Desktop withholds `Agent` from subagents), so the **conductor** drives the stage, dispatching each isolated step itself (all `main → subagent`, one level): §3 isolate = conductor `git` plumbing; §4 execute = dispatch the executor subagent (mimo → `mimo-code:mimo-delegate` sonnet); §5 review = dispatch a `general-purpose` review subagent (no model override → inherits main); §6 verify = dispatch a verify subagent; §7 land = conductor `git` plumbing. The conductor reads only terse reports — never diffs/logs, never the executor's output.
+
+In both modes: stage code lives only on `$BR` in `$WT`, the review runs at the **main/session model**, and the mimo executor is **sonnet**.
 
 Slugs: `<sprint>` = milestone slug (e.g. `auth`); `<stage>` = stage slug (e.g. `schema`). Let `S=<NN>-<stage>`, `WT=.worktrees/$S`, `BR=feat/<sprint>-$S`. The **stage** branch `$BR` (e.g. `feat/auth-01-schema`) is distinct from the **integration** branch `feat/<sprint>` (e.g. `feat/auth`). Run everything from the **repo root**; never `cd` into `$WT` unscoped — worktree-scoped commands use `git -C "$WT"` or a `(cd "$WT" && …)` subshell, and the land commands (§7) use `git -C "$REPO"` so they always act on the main tree, never the worktree.
 
@@ -83,21 +92,24 @@ When neither executor is selected/available, the stage-runner implements `docs/p
 
 ## 5. Review
 
-**In a separate subagent — mandatory.** The stage-runner dispatches the review as a nested `general-purpose` subagent (it has the `Agent` tool for exactly this). It does **not** run `/code-review` inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the stage-runner's context. `/code-review` reviews the **uncommitted** working-tree diff (the executor's output), so review runs *before* the commit in §7.
+**In a separate subagent — mandatory.** The review is dispatched as a `general-purpose` subagent — by the **stage-runner** in nested mode, by the **conductor** in flat mode (§0). It does **not** run inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the dispatcher's context. The review works on the **uncommitted** working-tree diff (the executor's output), so it runs *before* the commit in §7.
 
-**Model:** dispatch the review with **NO `model` override** so it inherits the stage-runner's model — which is the **main/session model** (the stage-runner itself has no model and inherited it from the conductor). The review is the quality gate; it runs at the main context's model, not a downgraded one. Setting any `model` here breaks that.
+**Which reviewer:** the **vendored `code-review` skill** (built into the runtime, invoked via the **Skill tool**, accepts `<effort> --fix` and applies fixes to the working tree). Do **NOT** `fd`/search the disk for a `code-review` command — that finds the `claude-plugins-official` **PR** plugin, which reviews a GitHub PR (`gh pr comment`) and spawns its own sub-agents (wrong tool, and it can't even run inside a subagent on a no-nesting runtime). Use effort `high|xhigh|max` only — **never `ultra`** (the one multi-agent/cloud variant).
+
+**Model:** dispatch the review with **NO `model` override** so it inherits the dispatcher's model — which is the **main/session model** (in nested mode the stage-runner itself has no model; in flat mode the conductor dispatches it directly). The review is the quality gate; it must run at the main context's model. Setting any `model` here breaks that.
 
 `$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is the executor's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
 ```
 Agent(
   subagent_type: "general-purpose",
-  # NO model field → inherits the stage-runner's model = the main/session model
+  # NO model field → inherits the dispatcher's model = the main/session model
   mode: "acceptEdits",        # → "bypassPermissions" only if a *command* prompt stalls it; safe, worktree is disposable
   description: "review $S",
   prompt: """
 Your working directory is the worktree <abs $WT> — first action: cd into it, run everything there.
-Invoke the code-review skill with args: <high|xhigh|max> --fix
-so it reviews AND applies fixes to the uncommitted working-tree diff in this worktree.
+Invoke the VENDORED `code-review` skill via the Skill tool with args: <high|xhigh|max> --fix
+(NOT a GitHub-PR /code-review plugin, NOT `ultra`) so it reviews AND applies fixes to the
+uncommitted working-tree diff in this worktree.
 Work autonomously: apply every fix, never ask for approval, do NOT commit.
 Return only `clean`, or a terse bullet list of items you could not resolve. No diffs, no narration.
 """)

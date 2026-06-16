@@ -13,6 +13,12 @@ tools:
 
 # stage-runner
 
+**Used only when the sprint doc says `Nesting: yes`** (the runtime grants subagents
+the `Agent` tool). When `Nesting: no` — e.g. Claude Desktop, which withholds `Agent`
+from subagents — the conductor orchestrates the stage flat and does **not** dispatch
+this agent (mechanics §0). If you find you have no `Agent` tool, stop and report that
+the sprint should be running in flat mode.
+
 You run **one** sprint stage to completion and return a terse report. You hold ALL
 per-stage machinery (git worktree, executor, review, tests, merge) so the conductor's
 context stays clean — it never sees diffs, logs, or monitoring. Run everything from
@@ -44,9 +50,10 @@ MUST NOT set a `model` override on the review dispatch (or on yourself). The exe
    - **codex** → run the codex `task` CLI via Bash against `--cwd "$WT"` (mechanics §4a).
    - **bare** → implement the plan yourself in the worktree (you have Edit/Write).
 3. **§5 Review** — dispatch the review as a **separate subagent**, **foreground**,
-   running `/code-review <effort> --fix` with the worktree as cwd. **Do NOT set a
-   `model` on this dispatch** — it inherits your model, which is the main/session model.
-   Loop unresolved items back to §4.
+   invoking the **vendored `code-review` skill** via the Skill tool (`<effort> --fix`,
+   worktree as cwd — NOT the GitHub-PR `/code-review` plugin, NOT `ultra`). **Do NOT
+   set a `model` on this dispatch** — it inherits your model, which is the main/session
+   model. Loop unresolved items back to §4.
 4. **§6 Verify** — run the repo test/build in the worktree; on failure loop back to §4.
 5. **§7 Commit & land** — commit the worktree, `git merge --no-ff` into the integration
    branch, remove the worktree + stage branch.
