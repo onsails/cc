@@ -36,7 +36,7 @@ $(cat docs/plans/$S-plan.md)
 [+ 'Use subagent-driven-development.' only if the codex-SDD probe found it]" \
   --cwd "$WT" --write --effort <high|xhigh>
 ```
-`--write` → codex runs `workspace-write` (edits files); without it, read-only. For a long stage, add `--background` and poll `node "$CODEX" status` / `node "$CODEX" result`; cap the polling (e.g. abort after N checks). If the session stalls, gets stuck, or stops with the plan unfinished, **resume it (below) before reporting `blocked`.**
+`--write` → codex runs `workspace-write` (edits files); without it, read-only. The companion already drives codex with `approval = never` + `sandbox = workspace-write` (NOT `--dangerously-bypass-approvals-and-sandbox`): it edits freely in the worktree, never blocks on approval, and is OS-confined to the worktree (+`$TMPDIR`/`/tmp`) — no flag change needed. Network is off inside the sandbox, so a codex-run build may fail; fine here, since §6 verify runs separately. For a long stage, add `--background` and poll `node "$CODEX" status` / `node "$CODEX" result`; cap the polling (e.g. abort after N checks). If the session stalls, gets stuck, or stops with the plan unfinished, **resume it (below) before reporting `blocked`.**
 
 **Resume a stuck or stopped session.** codex stopping mid-plan — interrupted, timed out, partial edits, dead `--background` job — is recoverable. **Resume the same thread** so codex keeps its own context, instead of a fresh `task` that re-derives everything and may clobber the partial edits. This is exactly what `codex:rescue --resume` wraps; call the runtime directly to target the worktree:
 ```
