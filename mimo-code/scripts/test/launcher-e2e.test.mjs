@@ -41,6 +41,41 @@ test("fresh delegate captures the session id and emits concise progress", () => 
   assert.equal(fs.readFileSync(path.join(dir, "h1.sessionid"), "utf8"), "ses_fake");
 });
 
+test("the run is launched with the permission policy env and without the skip flag", () => {
+  const state = freshState();
+  const argsOut = path.join(freshState(), "argv.json");
+  const envOut = path.join(freshState(), "config.json");
+  const res = runLauncher(
+    ["--handle", "p1", "--cwd", process.cwd(), "--", "build it"],
+    state,
+    { FAKE_MIMO_ARGS_OUT: argsOut, FAKE_MIMO_ENV_OUT: envOut },
+  );
+  assert.equal(res.status, 0, res.stderr);
+  const argv = JSON.parse(fs.readFileSync(argsOut, "utf8"));
+  assert.ok(!argv.includes("--dangerously-skip-permissions"), JSON.stringify(argv));
+  const cfg = JSON.parse(fs.readFileSync(envOut, "utf8"));
+  assert.deepEqual(cfg.permission, { edit: "allow", bash: "allow", webfetch: "allow", external_directory: "allow" });
+  assert.equal(cfg.permission.doom_loop, undefined);
+});
+
+test("an existing MIMOCODE_CONFIG_CONTENT is merged, not clobbered", () => {
+  const state = freshState();
+  const envOut = path.join(freshState(), "config.json");
+  const res = runLauncher(
+    ["--handle", "p2", "--cwd", process.cwd(), "--", "build it"],
+    state,
+    {
+      FAKE_MIMO_ENV_OUT: envOut,
+      MIMOCODE_CONFIG_CONTENT: JSON.stringify({ provider: { openai: { x: 1 } }, permission: { doom_loop: "allow" } }),
+    },
+  );
+  assert.equal(res.status, 0, res.stderr);
+  const cfg = JSON.parse(fs.readFileSync(envOut, "utf8"));
+  assert.deepEqual(cfg.provider, { openai: { x: 1 } });   // user's other config survives
+  assert.equal(cfg.permission.doom_loop, "allow");        // user permission key preserved
+  assert.equal(cfg.permission.edit, "allow");             // our policy still applied
+});
+
 test("resume reads the sidecar and forwards --session", () => {
   const state = freshState();
   const first = runLauncher(["--handle", "h1", "--cwd", process.cwd(), "--", "first"], state);

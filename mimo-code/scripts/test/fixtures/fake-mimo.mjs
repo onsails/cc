@@ -2,8 +2,9 @@
 // Stand-in for `mimo`. Handles three argv shapes:
 // - `providers list ...` → ANSI-colored box text listing authenticated (●) providers, exit 0
 // - `models ...`         → plain `provider/model` lines (authed + unauthed), exit 0
-// - `run --format json --dangerously-skip-permissions [--session <id>] [...]`:
+// - `run --format json [--session <id>] [...]`:
 //   - records its argv to FAKE_MIMO_ARGS_OUT (if set) for assertions
+//   - records its MIMOCODE_CONFIG_CONTENT env to FAKE_MIMO_ENV_OUT (if set)
 //   - `--session badid` → emit nothing, error on stderr, exit 1 (bad/unknown session)
 //   - otherwise emit 3 NDJSON lines carrying a sessionID, exit 0
 import fs from "node:fs";
@@ -33,6 +34,9 @@ if (argv[0] === "models") {
 
 const out = process.env.FAKE_MIMO_ARGS_OUT;
 if (out) fs.writeFileSync(out, JSON.stringify(argv));
+
+const envOut = process.env.FAKE_MIMO_ENV_OUT;
+if (envOut) fs.writeFileSync(envOut, process.env.MIMOCODE_CONFIG_CONTENT ?? "");
 
 const si = argv.indexOf("--session");
 const session = si >= 0 ? argv[si + 1] : null;

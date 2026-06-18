@@ -27,3 +27,11 @@ Claude stays the conductor; the heavy work and the tokens move to mimo.
 - Resume is the recovery path for both "mimo asked a clarification" and a host
   run-cap kill — the session id is captured on the first stream line.
 - For concurrent **write** delegations, give each its own git worktree.
+- **Permissions:** the launcher does **not** use `--dangerously-skip-permissions`.
+  It injects a scoped policy via `MIMOCODE_CONFIG_CONTENT`
+  (`edit`/`bash`/`webfetch`/`external_directory` → `allow`), merged on top of your
+  config. Edits and commands run freely in the workspace; `doom_loop` is left at
+  `ask`, which headless `mimo run` **auto-rejects** — a runaway-loop circuit
+  breaker (the run comes back incomplete and is resumed, not a token sink). Headless
+  mode never blocks on a permission ask, so there is no interactive approval to wait
+  on. An existing `MIMOCODE_CONFIG_CONTENT` is merged, not clobbered.

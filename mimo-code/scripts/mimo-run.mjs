@@ -5,6 +5,12 @@
 // streams mimo's output through unchanged. Owns only --handle/--cwd/--resume;
 // everything after `--` is forwarded to `mimo run` verbatim. The mimo binary is
 // `mimo` unless MIMO_BIN overrides it (used by tests + nix path pinning).
+//
+// Permissions: we do NOT pass --dangerously-skip-permissions. Instead we inject a
+// scoped permission policy via MIMOCODE_CONFIG_CONTENT (see PERMISSION_POLICY /
+// buildConfigContent). mimo's default `build` agent already allows edit/bash/etc.
+// within cwd; in headless `mimo run` a permission *ask* is auto-REJECTED (it never
+// blocks on stdin), so the only knobs that matter are which permissions stay `ask`.
 import { spawn, execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -69,8 +75,45 @@ export function acquireLock(lockPath, pid = process.pid) {
   throw new Error("could not acquire lock after stale reclaim");
 }
 
+// Permission policy injected into mimo via MIMOCODE_CONFIG_CONTENT (a merged
+// "local" config source) — this replaces --dangerously-skip-permissions.
+// `edit`/`bash`/`webfetch` are already allowed by mimo's default `build` agent;
+// making them explicit is defensive + self-documenting. `external_directory`
+// (paths outside cwd — e.g. a worktree's real gitdir or $TMPDIR) flips from the
+// default `ask` to `allow` so legitimate out-of-cwd work isn't auto-rejected.
+// `doom_loop` is INTENTIONALLY omitted: it stays `ask`, which headless `mimo run`
+// auto-REJECTS — a runaway-loop circuit breaker. mimo resolves rules with
+// findLast, so this (appended last as the highest-priority source) wins over the
+// defaults. There is no interactive approval in headless mode: an ask is rejected,
+// never queued — so a policy, not a watcher, is the lever.
+export const PERMISSION_POLICY = Object.freeze({
+  edit: "allow",
+  bash: "allow",
+  webfetch: "allow",
+  external_directory: "allow",
+});
+
+// Merge PERMISSION_POLICY into any pre-existing MIMOCODE_CONFIG_CONTENT. Unrelated
+// top-level keys and any permission keys we don't set (e.g. a user-supplied
+// `doom_loop`/bash pattern map) are preserved; our four keys win on conflict. A
+// non-JSON or non-object existing value is ignored (our policy still applies).
+// Returns a JSON string ready to assign to MIMOCODE_CONFIG_CONTENT.
+export function buildConfigContent(existing) {
+  let base = {};
+  if (existing != null && String(existing).trim() !== "") {
+    try {
+      const parsed = JSON.parse(existing);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) base = parsed;
+    } catch { /* not JSON — start fresh; our policy still applies */ }
+  }
+  const prior = base.permission && typeof base.permission === "object" && !Array.isArray(base.permission)
+    ? base.permission
+    : {};
+  return JSON.stringify({ ...base, permission: { ...prior, ...PERMISSION_POLICY } });
+}
+
 export function buildMimoArgs({ resume, forward, sidPath }) {
-  const base = ["run", "--format", "json", "--dangerously-skip-permissions"];
+  const base = ["run", "--format", "json"];
   if (resume) {
     let sid = "";
     try { sid = fs.readFileSync(sidPath, "utf8").trim(); }
@@ -208,7 +251,11 @@ async function main() {
   };
   process.on("exit", release);
 
-  const child = spawn(mimoBin, mimoArgs, { cwd: args.cwd, stdio: ["ignore", "pipe", "inherit"] });
+  const childEnv = {
+    ...process.env,
+    MIMOCODE_CONFIG_CONTENT: buildConfigContent(process.env.MIMOCODE_CONFIG_CONTENT),
+  };
+  const child = spawn(mimoBin, mimoArgs, { cwd: args.cwd, env: childEnv, stdio: ["ignore", "pipe", "inherit"] });
 
   // process.on("exit") does NOT fire on signal termination. The host's run cap
   // kills us with SIGTERM, so release the lock and tear down the child here to

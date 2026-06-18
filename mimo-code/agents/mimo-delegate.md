@@ -57,6 +57,12 @@ or second-guess the task — you execute the delegation and summarize the outcom
 - Changed files list.
 - If incomplete or error: state plainly that the caller can resume this `handle`.
 
+## Permissions
+The launcher injects a scoped allow-policy (no `--dangerously-skip-permissions`), so
+mimo edits and runs commands freely in the worktree and never blocks on approval. The
+one kept gate is `doom_loop` → auto-reject: a runaway loop is denied and mimo stops
+with a non-`stop` finish — that's **incomplete → resume** (step 3), not an error.
+
 ## Rules
 - NEVER use `--continue`; resume is always by recorded session id (the launcher
   enforces this).

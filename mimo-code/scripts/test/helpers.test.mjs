@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parseArgs, stateDir, writeAtomic, acquireLock, isAlive, buildMimoArgs } from "../mimo-run.mjs";
+import { parseArgs, stateDir, writeAtomic, acquireLock, isAlive, buildMimoArgs, buildConfigContent, PERMISSION_POLICY } from "../mimo-run.mjs";
 
 test("parseArgs splits launcher flags from forwarded args at --", () => {
   const a = parseArgs(["--handle", "h1", "--cwd", "/x", "--", "-m", "openai/gpt-5.4", "do it"]);
@@ -53,10 +53,44 @@ test("buildMimoArgs injects --session on resume and fails without a sidecar", ()
   fs.writeFileSync(sid, "ses_xyz\n");
   assert.deepEqual(
     buildMimoArgs({ resume: true, forward: ["more"], sidPath: sid }),
-    ["run", "--format", "json", "--dangerously-skip-permissions", "--session", "ses_xyz", "more"]
+    ["run", "--format", "json", "--session", "ses_xyz", "more"]
   );
   assert.deepEqual(
     buildMimoArgs({ resume: false, forward: ["-m", "x", "task"], sidPath: sid }),
-    ["run", "--format", "json", "--dangerously-skip-permissions", "-m", "x", "task"]
+    ["run", "--format", "json", "-m", "x", "task"]
   );
+});
+
+test("buildMimoArgs never passes --dangerously-skip-permissions", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mimo-skip-"));
+  const sid = path.join(dir, "h.sessionid");
+  fs.writeFileSync(sid, "ses_xyz\n");
+  assert.ok(!buildMimoArgs({ resume: false, forward: ["task"], sidPath: sid }).includes("--dangerously-skip-permissions"));
+  assert.ok(!buildMimoArgs({ resume: true, forward: ["task"], sidPath: sid }).includes("--dangerously-skip-permissions"));
+});
+
+test("buildConfigContent emits the permission policy, doom_loop omitted (stays ask)", () => {
+  const cfg = JSON.parse(buildConfigContent(undefined));
+  assert.deepEqual(cfg, { permission: PERMISSION_POLICY });
+  assert.deepEqual(cfg.permission, { edit: "allow", bash: "allow", webfetch: "allow", external_directory: "allow" });
+  // doom_loop deliberately absent → mimo keeps its default `ask` → headless auto-reject (the brake).
+  assert.equal(cfg.permission.doom_loop, undefined);
+});
+
+test("buildConfigContent merges into an existing config: keeps other keys, our policy wins", () => {
+  const existing = JSON.stringify({
+    provider: { openai: { x: 1 } },
+    permission: { doom_loop: "allow", external_directory: "deny", bash: { "rm -rf *": "deny" } },
+  });
+  const cfg = JSON.parse(buildConfigContent(existing));
+  assert.deepEqual(cfg.provider, { openai: { x: 1 } });        // unrelated top-level key preserved
+  assert.equal(cfg.permission.doom_loop, "allow");             // user permission key we don't set → preserved
+  assert.equal(cfg.permission.external_directory, "allow");    // our policy wins on conflict
+  assert.equal(cfg.permission.edit, "allow");
+});
+
+test("buildConfigContent ignores a non-JSON or array existing value", () => {
+  assert.deepEqual(JSON.parse(buildConfigContent("not json {")), { permission: PERMISSION_POLICY });
+  assert.deepEqual(JSON.parse(buildConfigContent("[1,2,3]")), { permission: PERMISSION_POLICY });
+  assert.deepEqual(JSON.parse(buildConfigContent("")), { permission: PERMISSION_POLICY });
 });
