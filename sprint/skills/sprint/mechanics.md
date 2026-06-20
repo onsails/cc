@@ -7,9 +7,9 @@ Exact commands for per-stage lifecycle steps 3–7, run **from the repo root**. 
 WHO runs steps 3–7 depends on the sprint-doc `Nesting:` header (set once by the nesting probe — see SKILL Capability Probes):
 
 - **`Nesting: yes` (nested):** the conductor dispatches **one `sprint:stage-runner` subagent** that runs all of §3–§7 and dispatches the executor (§4) and review (§5) as **nested** subagents. The stage-runner carries the **`Agent` tool** and has **no `model`** (inherits the main/session model, so the §5 review inherits it too). The conductor sees only its terse report.
-- **`Nesting: no` (flat):** subagents can't dispatch subagents (e.g. Claude Desktop withholds `Agent` from subagents), so the **conductor** drives the stage, dispatching each isolated step itself (all `main → subagent`, one level): §3 isolate = conductor `git` plumbing; §4 execute = dispatch the executor subagent (mimo → `mimo-code:mimo-delegate` sonnet); §5 review = dispatch a `general-purpose` review subagent (no model override → inherits main); §6 verify = dispatch a verify subagent; §7 land = conductor `git` plumbing. The conductor reads only terse reports — never diffs/logs, never the executor's output.
+- **`Nesting: no` (flat):** subagents can't dispatch subagents (e.g. Claude Desktop withholds `Agent` from subagents), so the **conductor** drives the stage, dispatching each isolated step itself (all `main → subagent`, one level): §3 isolate = conductor `git` plumbing; §4 execute = dispatch the executor subagent (mimo → `mimo-code:mimo-delegate` sonnet; native → `sprint:stage-executor` at the conductor-ASKed model); §5 review = dispatch a `general-purpose` review subagent (no model override → inherits main); §6 verify = dispatch a verify subagent; §7 land = conductor `git` plumbing. The conductor reads only terse reports — never diffs/logs, never the executor's output.
 
-In both modes: stage code lives only on `$BR` in `$WT`, the review runs at the **main/session model**, and the mimo executor is **sonnet**.
+In both modes: stage code lives only on `$BR` in `$WT`, the review runs at the **main/session model** (native exception: at the executor's model when that exceeds main — §5), the mimo executor is **sonnet**, and the native executor runs at the **conductor-ASKed model**.
 
 Slugs: `<sprint>` = milestone slug (e.g. `auth`); `<stage>` = stage slug (e.g. `schema`). Let `S=<NN>-<stage>`, `WT=.worktrees/$S`, `BR=feat/<sprint>-$S`. The **stage** branch `$BR` (e.g. `feat/auth-01-schema`) is distinct from the **integration** branch `feat/<sprint>` (e.g. `feat/auth`). Run everything from the **repo root**; never `cd` into `$WT` unscoped — worktree-scoped commands use `git -C "$WT"` or a `(cd "$WT" && …)` subshell, and the land commands (§7) use `git -C "$REPO"` so they always act on the main tree, never the worktree.
 
@@ -24,7 +24,7 @@ git worktree add -b "$BR" "$WT" feat/<sprint> || { echo "blocked: cannot isolate
 
 ## 4. Execute
 
-Read the engine from the sprint-doc `Engine:` header and dispatch the matching variant below. For `Engine: mimo`, the model, variant, and `mimo:<handle>` are **inputs the conductor already resolved** (pre-dispatch: it ran `mimo-resolve`, picked model+variant, minted the per-stage handle `<stage>-<rand4>`, and recorded `mimo:<handle>` on the stage line) and passes to the stage-runner — the stage-runner does **not** resolve them here.
+Read the engine from the sprint-doc `Engine:` header and dispatch the matching variant below. For `Engine: mimo`, the model, variant, and `mimo:<handle>` are **inputs the conductor already resolved** (pre-dispatch: it ran `mimo-resolve`, picked model+variant, minted the per-stage handle `<stage>-<rand4>`, and recorded `mimo:<handle>` on the stage line) and passes to the stage-runner — the stage-runner does **not** resolve them here. For `Engine: native`, the executor **model** is likewise a conductor-resolved input (pre-dispatch: it ASKed the user, scaled to risk, and recorded `model:<model>` on the stage line) — the dispatcher passes it via the Agent `model` param, it does not pick it here.
 
 ### 4a. Engine: codex
 
@@ -86,9 +86,42 @@ Agent(
 ```
 Cap resumes like codex: after ~2 that still leave the plan unfinished, report `blocked: mimo stalled, <N>/<total>, worktree retained`.
 
-### 4c. Engine: bare
+### 4c. Engine: native
 
-When neither executor is selected/available, the stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor).
+The executor is `sprint:stage-executor` — a native Claude subagent dispatched by the stage-runner (nested) or the conductor (flat), **foreground** (the dispatcher blocks until it returns), into the worktree. The **model is an input the conductor already resolved** (pre-dispatch: it ASKed the user, scaling the offered default to stage risk — risky→`opus`, low/normal→`sonnet`) and the dispatcher passes via the Agent `model` param — it is **not** chosen here. The executor writes files directly into `$WT`; the dispatcher does **not** edit files in this variant. `done` requires a **non-empty** `git -C "$REPO/$WT" status --porcelain`; an empty diff is **incomplete → resume** (native often stops mid-plan having written nothing).
+
+**Fresh run.**
+```
+Agent(
+  subagent_type: "sprint:stage-executor",
+  model: <model from conductor>,   # the ASKed model; risky→opus
+  description: "execute $S",
+  prompt: """
+  mode: fresh
+  cwd: "$REPO/$WT"          # absolute; first action: cd into it
+  Implement this plan fully and exactly:
+  $(cat docs/plans/$S-plan.md)
+  """)
+```
+
+**Resume a stuck or stopped session.** Native has **no session id** — the worktree IS the state, so "resume" is just a fresh dispatch that reads the partial diff. Re-dispatch with `mode: resume`, the **same `cwd`**, and **the same model** (reuse the stage line's recorded `model:<model>`); the executor reads the plan + current worktree diff and does only what remains. Re-feeding the full plan is harmless but unnecessary — point it at the plan path. Keep the partial worktree (uncommitted); never commit or land a partial stage:
+```
+Agent(
+  subagent_type: "sprint:stage-executor",
+  model: <same model>,
+  description: "resume $S",
+  prompt: """
+  mode: resume
+  cwd: "$REPO/$WT"          # absolute
+  Your previous run stopped before finishing; re-read the plan and the current
+  worktree diff, do only what remains, and complete it fully.
+  """)
+```
+Cap resumes like the others: after ~2 that still leave the plan unfinished, report `blocked: native stalled, <N>/<total>, worktree retained`.
+
+### 4d. Engine: bare
+
+When **no executor subagent can be dispatched at all** (truly degenerate — neither codex/mimo nor a native `stage-executor` is reachable), the stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor). Prefer `native` (§4c) whenever a subagent CAN be dispatched: it keeps the orchestrator's context lean and lets the model scale per stage, which inline `bare` cannot.
 
 ## 5. Review
 
@@ -96,7 +129,7 @@ When neither executor is selected/available, the stage-runner implements `docs/p
 
 **Which reviewer:** the **vendored `code-review` skill** (built into the runtime, invoked via the **Skill tool**, accepts `<effort> --fix` and applies fixes to the working tree). Do **NOT** `fd`/search the disk for a `code-review` command — that finds the `claude-plugins-official` **PR** plugin, which reviews a GitHub PR (`gh pr comment`) and spawns its own sub-agents (wrong tool, and it can't even run inside a subagent on a no-nesting runtime). Use effort `high|xhigh|max` only — **never `ultra`** (the one multi-agent/cloud variant).
 
-**Model:** dispatch the review with **NO `model` override** so it inherits the dispatcher's model — which is the **main/session model** (in nested mode the stage-runner itself has no model; in flat mode the conductor dispatches it directly). The review is the quality gate; it must run at the main context's model. Setting any `model` here breaks that.
+**Model:** dispatch the review with **NO `model` override** so it inherits the dispatcher's model — which is the **main/session model** (in nested mode the stage-runner itself has no model; in flat mode the conductor dispatches it directly). The review is the quality gate; it must run at the main context's model. Setting any `model` here breaks that. **Native exception (`Engine: native` only):** if the native executor ran at a model *stronger* than main (e.g. `opus` on a `sonnet` session), set `model: <executor model>` on the review dispatch so the gate is never weaker than the code it reviews. In every other engine, leave `model` unset.
 
 `$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is the executor's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
 ```
@@ -137,10 +170,10 @@ git -C "$REPO" worktree remove "$WT" && git -C "$REPO" branch -d "$BR"
 
 ## Effort Scaling
 
-| Stage risk | executor effort/variant (step 4) | review effort (step 5) |
-|---|---|---|
-| low / cosmetic | high | high |
-| normal | xhigh | xhigh |
-| risky / wide blast radius | xhigh | max |
+| Stage risk | codex effort / mimo variant (step 4) | native model (step 4) | review effort (step 5) |
+|---|---|---|---|
+| low / cosmetic | high | sonnet | high |
+| normal | xhigh | sonnet | xhigh |
+| risky / wide blast radius | xhigh | opus | max |
 
-codex maps these to `--effort`; mimo maps them to `--variant` (the conductor passes the resolved variant to the stage-runner). `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
+codex maps these to `--effort`; mimo maps them to `--variant` (the conductor passes the resolved variant to the stage-runner); native maps them to the executor **model** (the conductor offers the risk-scaled model in its per-stage ASK — the user picks). The `native model` column is the **recommended default** in that ASK, not an auto-pick. `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.

@@ -1,7 +1,7 @@
 ---
 name: sprint
-description: Use when one milestone is too large for a single spec or plan and needs several brainstorm-and-plan rounds before it ships — a long, multistage effort spanning sessions where the coding is handed off to an executor (codex or mimo) while you stay the conductor. Triggers on "long multistage project", "many brainstorms and plans", "milestone with multiple stages", "resume where I left off", "delegate implementation to codex or mimo".
-argument-hint: "[mimo|codex] [<provider/model>] [variant] [milestone description]"
+description: Use when one milestone is too large for a single spec or plan and needs several brainstorm-and-plan rounds before it ships — a long, multistage effort spanning sessions where the coding is handed off to an executor (codex, mimo, or native Claude subagents) while you stay the conductor. Triggers on "long multistage project", "many brainstorms and plans", "milestone with multiple stages", "resume where I left off", "delegate implementation to codex or mimo or a native subagent".
+argument-hint: "[mimo|codex|native] [<provider/model>|<model>] [variant] [milestone description]"
 ---
 
 # sprint
@@ -18,7 +18,7 @@ A milestone too big for one spec-and-plan is run as a **sprint**: a series of st
 
 - A milestone needs **multiple** brainstorm/plan rounds, not one spec → done.
 - Long, multistage work **spanning sessions**; you resume "what stage am I on".
-- You delegate implementation to an **executor** (codex or mimo) while steering design.
+- You delegate implementation to an **executor** (codex, mimo, or a native subagent) while steering design.
 
 **Not for:** a single-spec feature; one small task (`codex:rescue` directly).
 
@@ -26,10 +26,11 @@ A milestone too big for one spec-and-plan is run as a **sprint**: a series of st
 
 Raw slash-command arguments: `$ARGUMENTS`
 
-Parse them as `[mimo|codex] [<provider/model>] [variant] [milestone description]` (empty when the skill was triggered by description match rather than `/sprint` — then read intent from the user's message):
+Parse them as `[mimo|codex|native] [<provider/model>|<model>] [variant] [milestone description]` (empty when the skill was triggered by description match rather than `/sprint` — then read intent from the user's message):
 
-- A leading `mimo` or `codex` token → the **engine** (see [Engine selection](#engine-selection)).
+- A leading `mimo`, `codex`, or `native` token → the **engine** (see [Engine selection](#engine-selection)).
 - A `<provider/model>` token (contains `/`, mimo only) → **pin** that model for the whole sprint; a following `minimal|low|medium|high|max` token → the pinned **variant**. A pin records `Engine: mimo (model: …, variant: …, pinned)` and skips per-stage model resolution.
+- For `native`, a following **bare model alias** (no `/`, e.g. `opus`/`sonnet`) → **pin** that model for the whole sprint (records `Engine: native (model: …, pinned)` and skips the per-stage ASK).
 - Remaining text → the **milestone description** that seeds the decomposition brainstorm. No description **and** an existing sprint doc → resume at the first non-done stage.
 
 ## Capability Probes (run FIRST, every invocation)
@@ -41,6 +42,7 @@ Probe; never assume. Adapt, and tell the user to install whatever's missing.
 | superpowers | `superpowers:brainstorming` in skills list? | bare brainstorm + plan; **recommend installing superpowers** |
 | executor: codex | `codex:rescue` in skills list? | not required — codex is optional; mimo is the dependency-guaranteed default |
 | executor: mimo | `mimo-code:mimo-delegate` available? (hard dependency — should always be true) | if absent, the dependency failed to install — tell the user to reinstall sprint |
+| executor: native | none — Claude is the runtime | always available; no external CLI, no probe, no model-resolution step (the conductor knows the models from context and ASKs per stage) |
 | codex SDD | *(only if engine=codex)* `fd -t d subagent-driven-development ~/.codex/skills ~/.claude/plugins/marketplaces/openai-codex 2>/dev/null` | hand codex the whole plan |
 | mimo model | *(only if engine=mimo, unless pinned)* dispatch `mimo-code:mimo-resolve` | **ASK the user** unless `options` has exactly one model (then auto-pick) — one provider ≠ one option |
 | **nesting** | dispatch a one-shot `general-purpose` probe subagent, prompt: *"Reply with exactly one word: `Agent` if you have a Task/Agent subagent-dispatch tool, else `NONE`."* | reports `Agent`/`Task` → `Nesting: yes`; `NONE` → `Nesting: no`. Selects the **orchestration mode** (see Dispatch). Run **once per sprint**, persist in the header. (CLI grants subagents `Agent` → yes; Claude Desktop withholds it → no.) |
@@ -54,17 +56,19 @@ Probe; never assume. Adapt, and tell the user to install whatever's missing.
 
 ### Engine selection
 
-The executor is **codex** or **mimo**. mimo is the dependency-guaranteed default; codex is optional (probe `codex:rescue`).
+The executor is **codex**, **mimo**, or **native** (a native Claude `sprint:stage-executor` subagent). **mimo** and **native** are always available (mimo is a hard dependency; native is Claude itself — no external CLI, no probe); **codex** is optional (probe `codex:rescue`).
 
-- **Explicit arg wins.** `/sprint mimo` or `/sprint codex` picks the engine directly. If codex is requested but absent → tell the user to install the codex plugin (or explicitly opt into bare execution), then stop.
-- **No arg:** if codex is present (probe) → `AskUserQuestion` (mimo vs codex). If codex is absent → **mimo** (the only guaranteed engine), no question.
+- **Explicit arg wins.** `/sprint mimo`, `/sprint codex`, or `/sprint native` picks the engine directly. If codex is requested but absent → tell the user to install the codex plugin (or pick mimo/native), then stop.
+- **No arg:** `AskUserQuestion` across the available engines — **mimo** and **native** always, plus **codex** if probed. (mimo is still the safe default to recommend.) Don't auto-skip the question: native and mimo are both always present, so there's never a single forced engine.
 
 Record the engine in the sprint-doc header. **The model is stored in the header ONLY when pinned:**
 
 - `Engine: codex`
 - `Engine: mimo` — resolve the model **every stage** (the conductor dispatches `mimo-resolve` and ASKs/auto-picks per stage).
 - `Engine: mimo (model: <provider/model>, variant: <v>, pinned)` — **only** on an explicit user pin like `/sprint mimo <provider/model> [variant]`; reuse the pinned model+variant every stage.
-- `Engine: bare` — last-resort fallback when neither executor is available (the stage-runner implements stages itself, mechanics §4c). Normally unreachable since mimo is a hard dependency; recorded so a resumed bare sprint still has a recognizable header.
+- `Engine: native` — **ASK the user which Claude model every stage** (the conductor already knows the available models from context — **no resolve probe** — and offers them with the risk-scaled one recommended).
+- `Engine: native (model: <model>, pinned)` — **only** on an explicit user pin like `/sprint native <model>`; reuse the pinned model every stage (skips the per-stage ASK).
+- `Engine: bare` — last-resort fallback when no executor subagent can be dispatched at all (the stage-runner implements stages itself, mechanics §4d). Normally unreachable; recorded so a resumed bare sprint still has a recognizable header. (Prefer `native` over `bare` whenever a subagent CAN be dispatched — it keeps the orchestrator lean and lets the model scale.)
 
 ## The Sprint Doc
 
@@ -96,13 +100,15 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 1. **Brainstorm** (main) → `superpowers:brainstorming` (or bare) → `docs/plans/<NN>-<stage>-spec.md`.
 2. **Plan** (main) → `superpowers:writing-plans` (or bare) → `docs/plans/<NN>-<stage>-plan.md`.
 3. **Isolate** → create the worktree off the integration branch.
-4. **Execute** → the executor (codex or mimo — mechanics §4) implements the plan, write-enabled, **in the worktree**. If it stalls/stops mid-plan, **resume the same session** (never re-run fresh): codex `task --resume-last`; mimo re-dispatch `mimo-delegate` with the recorded `mimo:<handle>` (mechanics §4).
+4. **Execute** → the executor (codex, mimo, or native — mechanics §4) implements the plan, write-enabled, **in the worktree**. If it stalls/stops mid-plan, **resume** (never re-run fresh): codex `task --resume-last`; mimo re-dispatch `mimo-delegate` with the recorded `mimo:<handle>`; native re-dispatch `stage-executor` with `mode: resume`, same cwd + model (mechanics §4).
 5. **Review** → in a **subagent** that cds into the worktree, invoke the **vendored `code-review` skill** (`<high|xhigh|max> --fix`, effort by stage risk) via the Skill tool — not the GitHub-PR `/code-review` plugin, not `ultra` (mechanics §5); loop unresolved items back to step 4.
 6. **Verify** → repo test/build **in the worktree**; on failure, loop back to step 4.
 7. **Commit & land** → commit the worktree changes (the executor/review leave them uncommitted), merge the branch into the integration branch, remove the worktree.
 8. **Update doc** (main) → stage → `done` + merge SHA; append decisions/questions; commit the doc; next stage.
 
 **Conductor pre-dispatch (engine=mimo, unless pinned):** before the stage executes, the conductor dispatches `mimo-resolve` for the authenticated `options`, then picks model+variant: **exactly one** model → auto-pick (asking is pointless); **more than one** → **ASK** (`AskUserQuestion` when ≤4 models, else print the grouped list and have them name an id). **One authenticated provider offering several models is still "more than one" → ASK.** The proactive output style, a "low-risk"/"mechanical"/"trivial" stage, cost, or "not wanting to interrupt" are **not** reasons to skip the ASK — the user chose the engine, not the model. ASK the variant likewise (offer a "default" that omits `--variant`). Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the stage line. Only a **pinned** sprint (`Engine: mimo (… pinned)`) skips resolve+ASK (reuses the pin, still a fresh handle per stage); `Engine: codex` has no model resolution.
+
+**Conductor pre-dispatch (engine=native, unless pinned):** **no resolve probe** — the conductor already knows the available Claude models from context. It **ASKs the user which model** for the stage (`AskUserQuestion`), offering the known models (typically `opus`/`sonnet`) with the **risk-scaled** one recommended (risky/wide blast radius → `opus`; low/normal → `sonnet`). The same discipline as mimo applies: a "low-risk"/"mechanical"/"trivial" stage, the proactive style, cost, or "not wanting to interrupt" are **not** reasons to skip the ASK — only an explicit pin (`Engine: native (… pinned)`) does. Record the chosen model as `model:<model>` on the stage line (so a resumed stage reuses the same model); there is **no handle** — native has no session id.
 
 **Dispatch (by `Nesting:` header):** steps 3–7 always run in subagents — diffs/logs never reach the conductor.
 
@@ -111,7 +117,7 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 
 **The exact per-mode commands and the flat sub-steps are in `mechanics.md` §0** — open it before steps 3–7. Either way the conductor reads only terse reports and **never runs or monitors the executor** (no launcher calls, no PID/NDJSON/output polling).
 
-**Model policy:** the mimo executor (`mimo-code:mimo-delegate`) is **sonnet**; the **review inherits the main/session model** — never set a `model` on the review dispatch, because the review is the quality gate and must run at the main context's model. A verify subagent may be `sonnet`. The conductor runs only steps 1–2, the pre-dispatch resolve, the `Nesting: no` git plumbing (isolate/land), and step 8.
+**Model policy:** the mimo executor (`mimo-code:mimo-delegate`) is **sonnet**; the native executor (`sprint:stage-executor`) runs at the **conductor-ASKed model** (scaled to stage risk — risky→`opus`). The **review inherits the main/session model** — never set a `model` on the review dispatch, because the review is the quality gate and must run at the main context's model. **Native exception:** if the native executor ran at a model *stronger* than main (e.g. `opus` on a `sonnet` session), dispatch the review at that **executor** model instead of inheriting — the gate must never be weaker than the code it gates. A verify subagent may be `sonnet`. The conductor runs only steps 1–2, the pre-dispatch resolve/ASK, the `Nesting: no` git plumbing (isolate/land), and step 8.
 
 **Isolation invariant (non-negotiable):** stage **code** never touches the main checkout. Every edit, review fix, and the stage commit happen on the **stage branch `$BR` inside the worktree `$WT`**. Stage code reaches the integration branch **only** through the §7 `git merge --no-ff "$BR"`. The stage-runner must **never** edit stage code in the main tree and **never** `git commit` stage code onto the integration or base branch directly — even when it seems faster, even if the worktree step was skipped, even for a "one-line" change. The *only* thing committed directly to the integration branch is the conductor's step-8 sprint-doc bookkeeping. If step 3 can't isolate (integration branch missing, dirty main tree, `git worktree add` fails), **report `blocked` and stop** — never fall back to working in the main tree.
 
@@ -127,10 +133,12 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 | Running the nesting probe per stage, or assuming a runtime | Probe **once** per sprint, record `Nesting:` in the header, reuse it. Don't hardcode yes/no — CLI and Desktop differ. |
 | `fd`-searching for a `/code-review` command | That finds the `claude-plugins-official` **PR** plugin (reviews a GitHub PR via `gh pr comment`, and spawns its own agents — both wrong here). Invoke the **vendored** `code-review` skill via the Skill tool (`<effort> --fix`, in the worktree), and never `ultra` (the only multi-agent/cloud variant). |
 | Conductor running or monitoring the executor — calling the launcher, polling mimo's PID / NDJSON / output files | That's the executor subagent's job (`mimo-delegate`, foreground) — nested under the stage-runner when `Nesting: yes`, dispatched directly by the conductor when `Nesting: no`. Either way the conductor only awaits a terse report and never touches executor machinery. A subagent that "keeps yielding" is **not** a licence to take over monitoring in main. |
-| Auto-picking the mimo model because the stage is "low-risk"/"mechanical" or to avoid interrupting | The user chose the engine, not the model. Auto-pick **only** when `options` has exactly one model; several models (even all from one authenticated provider) → **ASK**. Proactivity and "right-sizing cost" never override this — only an explicit user pin does. |
+| Auto-picking the mimo/native model because the stage is "low-risk"/"mechanical" or to avoid interrupting | The user chose the engine, not the model. mimo: auto-pick **only** when `options` has exactly one model. native: **always ASK** which Claude model (offering the risk-scaled default). Proactivity and "right-sizing cost" never override this — only an explicit user pin does. |
+| *(native)* Implementing the plan inline in the conductor/stage-runner instead of dispatching `sprint:stage-executor` | That's `bare`, not `native`. native dispatches a dedicated executor subagent (at the ASKed model, into `$WT`) so the orchestrator stays lean and the model can scale. Inline = polluted context + no model knob. |
+| *(native)* Leaving the review at main when the executor ran a stronger model | If native executor = `opus` on a `sonnet` session, dispatch the review at `opus` too — never gate strong code with a weaker reviewer (Model policy → Native exception). |
 | Merging/removing the worktree before committing | The executor and `--fix` leave changes uncommitted — commit first (mechanics §7). |
 | Marking a stage `done` before it merged + passed verify | `done` = merged **and** green. |
-| Executor stopped/stalled mid-stage → reported `blocked` or re-ran fresh | Resume the **same** session first: codex `task --resume-last`; mimo re-dispatch `mimo-delegate` with the recorded handle (mechanics §4). Fresh loses the executor's context and may clobber the partial edits. |
+| Executor stopped/stalled mid-stage → reported `blocked` or re-ran fresh | Resume first: codex `task --resume-last`; mimo re-dispatch `mimo-delegate` with the recorded handle; native re-dispatch `stage-executor` with `mode: resume` (same cwd + model) so it reads the partial worktree diff and finishes the rest (mechanics §4). A blind fresh run loses context / re-does or clobbers the partial edits. |
 
 ## Red Flags — STOP
 
@@ -139,5 +147,5 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 - About to `git add`/`commit` in the main tree or onto the integration/base branch (stage code) → STOP. Stage code commits only on `$BR` inside `$WT`; it reaches the integration branch via §7 `merge --no-ff`. (Only the conductor's doc commit in step 8 goes on the integration branch.)
 - About to read mimo's NDJSON/PID or the launcher's output in the main context, or poll a "detached" executor → STOP. The executor runs inside a `mimo-delegate` subagent (foreground); the conductor only awaits a terse report.
 - `Nesting: no` and about to hand the whole stage to one `sprint:stage-runner` → STOP. That subagent can't dispatch its nested executor/review on this runtime; orchestrate the stage flat from the conductor (mechanics §0).
-- Executor stopped before finishing and about to launch a fresh session (or report `blocked`) → resume the existing session first: codex `--resume-last`; mimo re-dispatch with the recorded handle (mechanics §4).
+- Executor stopped before finishing and about to launch a fresh session (or report `blocked`) → resume first: codex `--resume-last`; mimo re-dispatch with the recorded handle; native re-dispatch `stage-executor` with `mode: resume` (same cwd + model) (mechanics §4).
 - No sprint doc yet but already brainstorming a stage → create the branch + doc and decompose first.

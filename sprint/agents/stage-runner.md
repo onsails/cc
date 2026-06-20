@@ -28,15 +28,19 @@ the **repo root**; the exact commands are in the sprint skill's `mechanics.md`
 **Model:** you intentionally have **no `model` of your own — you inherit the main
 (session) model.** This matters: the `/code-review` subagent you dispatch in §5 must
 run at the **main context's model**, and it gets there by inheriting from you. So you
-MUST NOT set a `model` override on the review dispatch (or on yourself). The executor
-(`mimo-code:mimo-delegate`) is the only nested agent with its own pinned model
-(sonnet).
+MUST NOT set a `model` override on the review dispatch (or on yourself). The **executor**
+is the exception that carries its own model: `mimo-code:mimo-delegate` is pinned sonnet;
+`sprint:stage-executor` (native) runs at the conductor-resolved model you pass it.
+**Native review exception:** if the native executor ran a model *stronger* than main
+(e.g. `opus` on a `sonnet` session), set `model: <that executor model>` on the §5 review
+dispatch too — never gate strong code with a weaker reviewer. Otherwise leave it unset.
 
 ## Inputs (from the conductor)
-- `engine` — `codex` | `mimo` | `bare` (from the sprint-doc `Engine:` header).
+- `engine` — `codex` | `mimo` | `native` | `bare` (from the sprint-doc `Engine:` header).
 - `sprint`, `S` (`<NN>-<stage>`), the plan path `docs/plans/$S-plan.md`, the stage title.
 - review/executor `effort` (and for mimo: the resolved `model`, `variant`, and the
-  bare `handle` from the `mimo:<handle>` stage-line token).
+  bare `handle` from the `mimo:<handle>` stage-line token; for native: the resolved
+  executor `model` from the `model:<model>` stage-line token).
 
 ## What you do (mechanics.md is authoritative)
 1. **§3 Isolate** — `git worktree add` the stage branch off the integration branch.
@@ -48,7 +52,13 @@ MUST NOT set a `model` override on the review dispatch (or on yourself). The exe
      `blocked`/`incomplete` return, resume by re-dispatching with the same handle and
      `mode: resume` (no model/variant), capped at ~2.
    - **codex** → run the codex `task` CLI via Bash against `--cwd "$WT"` (mechanics §4a).
-   - **bare** → implement the plan yourself in the worktree (you have Edit/Write).
+   - **native** → dispatch `sprint:stage-executor` as a nested subagent, **foreground**,
+     setting `model: <resolved executor model>` (the conductor ASKed it; risky→opus) and
+     passing `cwd=$REPO/$WT` + the plan in the prompt body (mechanics §4c). It writes into
+     the worktree; you do not edit files. Empty diff / stopped mid-plan → resume by
+     re-dispatching with `mode: resume`, same cwd, **same model**, capped at ~2.
+   - **bare** → implement the plan yourself in the worktree (you have Edit/Write). Only
+     when even a `stage-executor` subagent can't be dispatched; otherwise use native.
 3. **§5 Review** — dispatch the review as a **separate subagent**, **foreground**,
    invoking the **vendored `code-review` skill** via the Skill tool (`<effort> --fix`,
    worktree as cwd — NOT the GitHub-PR `/code-review` plugin, NOT `ultra`). **Do NOT
