@@ -41,6 +41,9 @@ dispatch too — never gate strong code with a weaker reviewer. Otherwise leave 
 - review/executor `effort` (and for mimo: the resolved `model`, `variant`, and the
   bare `handle` from the `mimo:<handle>` stage-line token; for native: the resolved
   executor `model` from the `model:<model>` stage-line token).
+- `sdd` — `available`/`unavailable` from the conductor's executor-SDD probe (mimo +
+  native). mimo: when `available`, include the SDD line in the mimo prompt (§4b).
+  native: forward it as `sdd:` to `stage-executor` (§4c).
 
 ## What you do (mechanics.md is authoritative)
 1. **§3 Isolate** — `git worktree add` the stage branch off the integration branch.
@@ -48,15 +51,17 @@ dispatch too — never gate strong code with a weaker reviewer. Otherwise leave 
 2. **§4 Execute** — by `engine`:
    - **mimo** → dispatch `mimo-code:mimo-delegate` as a nested subagent, **foreground**
      (you block until it returns), passing `handle`/`cwd=$REPO/$WT`/`model`/`variant`/
-     `prompt`/`mode`. mimo writes into the worktree; you do not edit files. On a
-     `blocked`/`incomplete` return, resume by re-dispatching with the same handle and
-     `mode: resume` (no model/variant), capped at ~2.
+     `prompt`/`mode`. When `sdd: available`, include the SDD line in the `prompt` (§4b).
+     mimo writes into the worktree; you do not edit files. On a `blocked`/`incomplete`
+     return, resume by re-dispatching with the same handle and `mode: resume` (no
+     model/variant), capped at ~2.
    - **codex** → run the codex `task` CLI via Bash against `--cwd "$WT"` (mechanics §4a).
    - **native** → dispatch `sprint:stage-executor` as a nested subagent, **foreground**,
      setting `model: <resolved executor model>` (the conductor ASKed it; risky→opus) and
-     passing `cwd=$REPO/$WT` + the plan in the prompt body (mechanics §4c). It writes into
-     the worktree; you do not edit files. Empty diff / stopped mid-plan → resume by
-     re-dispatching with `mode: resume`, same cwd, **same model**, capped at ~2.
+     passing `cwd=$REPO/$WT` + `sdd: <available|unavailable>` + the plan in the prompt body
+     (mechanics §4c). It writes into the worktree (or coordinates SDD workers that do);
+     you do not edit files. Empty diff / stopped mid-plan → resume by re-dispatching with
+     `mode: resume`, same cwd, **same model**, capped at ~2.
    - **bare** → implement the plan yourself in the worktree (you have Edit/Write). Only
      when even a `stage-executor` subagent can't be dispatched; otherwise use native.
 3. **§5 Review** — dispatch the review as a **separate subagent**, **foreground**,

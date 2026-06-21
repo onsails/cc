@@ -66,10 +66,12 @@ Agent(
   cwd: "$REPO/$WT"          # absolute
   model: <model from conductor>
   variant: <variant from conductor>
+  [+ "Use your subagent-driven-development skill (e.g. compose:subagent) to execute this plan — a fresh subagent per task." only if the mimo-SDD probe found it]
   Implement this plan fully and exactly:
   $(cat docs/plans/$S-plan.md)
   """)
 ```
+The SDD line is conditional on the conductor's mimo-SDD probe (SKILL Capability Probes): mimo ships `compose:subagent` and runs its own subagents, so when the probe finds it, the plan is executed task-by-task; absent (e.g. `--pure`), drop the line and mimo implements the plan directly.
 
 **Resume a stuck or stopped session.** If the stage stopped/unfinished, re-dispatch with the **same handle** and `mode: resume`. **CRITICAL: on resume do NOT pass `model` or `variant`** — mimo-delegate resumes by the session id recorded against the handle and takes neither. Never start a fresh session to "resume". mimo retains the plan and worktree context through that recorded session, so the continuation prompt need only say "finish what remains" — unlike codex, re-feeding the full plan is unnecessary:
 ```
@@ -88,7 +90,7 @@ Cap resumes like codex: after ~2 that still leave the plan unfinished, report `b
 
 ### 4c. Engine: native
 
-The executor is `sprint:stage-executor` — a native Claude subagent dispatched by the stage-runner (nested) or the conductor (flat), **foreground** (the dispatcher blocks until it returns), into the worktree. The **model is an input the conductor already resolved** (pre-dispatch: it ASKed the user, scaling the offered default to stage risk — risky→`opus`, low/normal→`sonnet`) and the dispatcher passes via the Agent `model` param — it is **not** chosen here. The executor writes files directly into `$WT`; the dispatcher does **not** edit files in this variant. `done` requires a **non-empty** `git -C "$REPO/$WT" status --porcelain`; an empty diff is **incomplete → resume** (native often stops mid-plan having written nothing).
+The executor is `sprint:stage-executor` — a native Claude subagent dispatched by the stage-runner (nested) or the conductor (flat), **foreground** (the dispatcher blocks until it returns), into the worktree. The **model is an input the conductor already resolved** (pre-dispatch: it ASKed the user, scaling the offered default to stage risk — risky→`opus`, low/normal→`sonnet`) and the dispatcher passes via the Agent `model` param — it is **not** chosen here. The executor writes files directly into `$WT`; the dispatcher does **not** edit files in this variant. `done` requires a **non-empty** `git -C "$REPO/$WT" status --porcelain`; an empty diff is **incomplete → resume** (native often stops mid-plan having written nothing). **SDD:** if the conductor's native-SDD probe found `superpowers:subagent-driven-development`, the dispatcher passes `sdd: available`; the executor uses SDD **only if it actually holds the `Agent` tool** (the runtime may withhold `Agent` from a subagent at this nesting depth — on `Nesting: no` it always does), otherwise it implements the plan directly. SDD applies to **fresh** runs only; a `resume` always completes the partial diff directly.
 
 **Fresh run.**
 ```
@@ -99,6 +101,7 @@ Agent(
   prompt: """
   mode: fresh
   cwd: "$REPO/$WT"          # absolute; first action: cd into it
+  sdd: <available|unavailable>   # from the native-SDD probe; if available AND you hold the Agent tool, use superpowers:subagent-driven-development (fresh subagent per task), else implement directly
   Implement this plan fully and exactly:
   $(cat docs/plans/$S-plan.md)
   """)
