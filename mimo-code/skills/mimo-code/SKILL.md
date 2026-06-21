@@ -34,12 +34,19 @@ Interpret as `[provider/model] [variant] <task>` (empty when triggered by descri
    `mimo providers login`.
 2. Using the returned `options` (the authenticated intersection — count **models**,
    not providers):
-   **Exactly one usable model** → auto-pick (asking is pointless). **More than one →
-   ASK the user** which one (AskUserQuestion when ≤4; else print the grouped list and
-   have them name an id). One authenticated provider offering several models is still
-   "more than one" → ASK; "low-risk"/"mechanical"/cost or proactivity never justify a
-   silent pick.
-3. **Ask effort/variant** too, offering a "default" option that omits `--variant`.
+   **Exactly one usable model** → auto-pick (asking is pointless). **≤4** → one
+   AskUserQuestion listing them. **>4** (the common real case — a single provider can
+   expose *dozens*) → **narrow, never dump**: AskUserQuestion the **provider** first
+   (the authenticated set is small), then AskUserQuestion **≤4 models** for that
+   provider — lead with `mimo-resolve`'s recommended id, and rely on the auto-added
+   **Other** free-text for the long tail. One authenticated provider offering several
+   models is still "more than one" → ASK; "low-risk"/"mechanical"/cost or proactivity
+   never justify a silent pick, and printing the whole catalogue for the user to
+   retype an id verbatim is the anti-pattern to avoid.
+3. **Ask effort/variant** with a **≤4 menu** — AskUserQuestion caps at 4 options, so
+   you **cannot** list all five variants + a default. Offer `default` (omit `--variant`)
+   plus a few variants, **each with a one-line description** (`default` is the safe
+   recommendation for a one-shot delegation); `minimal`/`medium` reach via **Other**.
 
 The conductor does the asking/auto-pick itself — `mimo-resolve` only gathers,
 never asks.
@@ -72,6 +79,7 @@ but two mimos editing one tree is a workspace hazard.
 |---|---|
 | "Asking the model is annoying — just default / omit `-m`." | The user wants to choose. Resolve the intersection and ASK (unless exactly one usable). Silent defaults are a violation, not a convenience. |
 | Bare task-slug handle (`json-logger`) | Two runs of the same task collide on the lock/state. Always add a unique suffix. |
-| Skipping effort selection | Offer variant (with a "default" that omits it). |
+| Skipping effort selection | Offer a ≤4 variant menu (`default` that omits `--variant`, + a few with one-line descriptions; `minimal`/`medium` via Other). |
+| Dumping the whole model list for the user to type an id (when >4) | Narrow provider-first: ASK the provider, then ≤4 of its models (recommended id first, Other for the tail). Never a wall of ids to retype. |
 | Running mimo inline to "keep it simple" | Pollutes the main context. Always the subagent. |
 | Resuming with `--continue` | Attaches to "the last session" → cross-task pollution. Resume is by recorded session id only. |
