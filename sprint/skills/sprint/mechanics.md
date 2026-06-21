@@ -170,10 +170,10 @@ git -C "$REPO" worktree remove "$WT" && git -C "$REPO" branch -d "$BR"
 
 ## Effort Scaling
 
-| Stage risk | codex effort / mimo variant (step 4) | native model (step 4) | review effort (step 5) |
-|---|---|---|---|
-| low / cosmetic | high | sonnet | high |
-| normal | xhigh | sonnet | xhigh |
-| risky / wide blast radius | xhigh | opus | max |
+| Stage risk | codex effort (step 4) | mimo variant (step 4) | native model (step 4) | review effort (step 5) |
+|---|---|---|---|---|
+| low / cosmetic | high | medium | sonnet | high |
+| normal | xhigh | high | sonnet | xhigh |
+| risky / wide blast radius | xhigh | max | opus | max |
 
-codex maps these to `--effort`; mimo maps them to `--variant` (the conductor passes the resolved variant to the stage-runner); native maps them to the executor **model** (the conductor offers the risk-scaled model in its per-stage ASK — the user picks). The `native model` column is the **recommended default** in that ASK, not an auto-pick. `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
+The `codex effort` and `mimo variant` columns are **separate vocabularies** — codex `--effort` is `high`/`xhigh`/`max`; mimo `--variant` is `minimal`/`low`/`medium`/`high`/`max` (it has **no `xhigh`**), so the two columns differ on purpose. codex maps its column to `--effort`; mimo maps its column to `--variant` — the **risk-scaled** value here is the one the conductor marks *Recommended* in the per-stage variant ASK (≤4 menu: `default` + the risk-relevant variants; `minimal`/`medium` via Other), not an auto-pick. native maps to the executor **model** (the conductor offers the risk-scaled model in its per-stage ASK — the user picks). The `native model` column is likewise the **recommended default** in that ASK. `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
