@@ -41,8 +41,11 @@ dispatch too — never gate strong code with a weaker reviewer. Otherwise leave 
 - review/executor `effort` (and for mimo: the resolved `model`, `variant`, and the
   bare `handle` from the `mimo:<handle>` stage-line token; for native: the resolved
   executor `model` from the `model:<model>` stage-line token).
-- `sdd` — `available`/`unavailable` from the conductor's executor-SDD probe (mimo +
-  native). mimo: when `available`, include the SDD line in the mimo prompt (§4b).
+- `sdd` — `available`/`unavailable` from the conductor (mimo + native). `available` means
+  **both** the SDD skill is present **and** the conductor judged this stage's tasks
+  independent enough to fan out — coupled/single-file/sequential-TDD stages arrive as
+  `unavailable` even when the skill exists (mechanics §4c). Forward it verbatim; don't
+  re-derive it. mimo: when `available`, include the SDD line in the mimo prompt (§4b).
   native: forward it as `sdd:` to `stage-executor` (§4c).
 
 ## What you do (mechanics.md is authoritative)

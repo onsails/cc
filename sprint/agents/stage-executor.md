@@ -2,14 +2,13 @@
 name: stage-executor
 description: Implements ONE sprint stage plan as a native Claude subagent in a git worktree, write-enabled, and returns a terse result. Use when the sprint Engine is native (no codex/mimo).
 model: sonnet
-tools:
-  - Agent
-  - Bash
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Write
+# No `tools:` allowlist on purpose — inherit the FULL session toolset. A `tools:` block is
+# a strict allowlist (docs: code.claude.com/docs/en/sub-agents) that silently drops `Skill`
+# and all MCP, so the executor could not invoke `superpowers:subagent-driven-development`,
+# `rust-dev:rust-dev`, or context7. Inheritance is NOT capped by the (Skill-less) stage-runner
+# parent — a child's toolset is its own (verified: general-purpose children of Skill-less
+# executors invoke Skill). UI tools (AskUserQuestion, etc.) stay unavailable to subagents
+# regardless, so the "work autonomously, never ask" invariant holds structurally.
 ---
 
 # stage-executor
@@ -35,7 +34,11 @@ review / verify / land. You only write code in the worktree.
      tool**, use the `superpowers:subagent-driven-development` skill — execute the plan
      by dispatching a fresh subagent per task (those workers Edit/Write in this same
      worktree `cwd`; they inherit your model unless the skill says otherwise). You stay
-     the coordinator and do not edit files yourself.
+     the coordinator and do not edit files yourself. **Do NOT re-judge whether SDD "fits"**
+     — the conductor already decided this stage's tasks are independent enough to fan out
+     (that's exactly what `sdd: available` encodes). Coupling, a single-file blast radius,
+     or sequential TDD are **not** yours to weigh here; if they applied, you'd have been
+     sent `sdd: unavailable`. Holding `Agent` + `available` ⇒ use SDD, full stop.
    - **Otherwise** (`sdd: unavailable`, or you have no `Agent` tool — common: the runtime
      withholds `Agent` from a subagent at this nesting depth, always so on `Nesting: no`)
      → implement the plan **directly**, Edit/Write files yourself in the worktree.
@@ -63,3 +66,7 @@ review / verify / land. You only write code in the worktree.
 - Dispatch subagents **only** for SDD (step 2) when `sdd: available` and the `Agent`
   tool is actually present. Without both, you ARE the executor — implement directly.
   Never use `Agent` for anything but SDD task workers, and never on a `resume`.
+- You inherit the full toolset. Use `Skill` to load what the plan needs — SDD task workers
+  (step 2), `rust-dev:rust-dev` before writing Rust, context7 for library docs. But **never**
+  use `Workflow` (no spawning workflows from a stage), and never review your own work — review
+  is the dispatcher's §5 job, not yours.

@@ -1,7 +1,7 @@
 {
   "name": "sprint",
   "description": "Orchestrate one large milestone as staged brainstorm/plan/execute cycles in a living sprint doc, delegating implementation to codex, mimo, or native Claude subagents",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "dependencies": ["mimo-code"],
   "author": { "name": "Andrey Kuz" }
 }
