@@ -10,7 +10,7 @@ argument-hint: "[mimo|codex|native] [<provider/model>|<model>] [variant] [milest
 
 A milestone too big for one spec-and-plan is run as a **sprint**: a series of stages, each one `brainstorm a spec → write a plan → hand the coding to the executor`. One living doc tracks the stages so you can stop and resume across sessions.
 
-**Core principle:** the main context stays a **lean conductor** — only the sprint doc, current stage, decisions, open questions. Every technical step (executor, review, verify, land) runs in a worktree via a subagent, so diffs and logs never reach it.
+**Core principle:** the main context stays a **lean conductor** — only the sprint doc, current stage, decisions, open questions. Every technical step (executor, review, verify, land) runs in a worktree via a subagent, so diffs and logs never reach it. **The same applies to investigation:** when discussion needs noisy diagnosis — debugging, a repro, browser clicks, log-reading — the conductor dispatches `sprint:investigator` (mechanics → *Investigation (spike)*), which generates the noise in isolation and returns a distilled finding; the conductor never does it inline.
 
 **You are the foreman. The executor digs.**
 
@@ -136,6 +136,7 @@ Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the st
 | Executor or review run in the main repo, not a worktree | codex: `--cwd "$WT"`. mimo: launched with the worktree as cwd. Review: the nested subagent cds into `$WT` first. All mutate files. |
 | Review run inline or as a `claude -p` subprocess instead of a subagent | Step 5 is **mandatory in a nested Agent/Task subagent** (mechanics §5) — keeps diffs/fixes out of the stage-runner's context. |
 | One giant spec/plan for the whole milestone | The anti-pattern this skill replaces. Decompose into stages. |
+| Conductor debugging / running a repro / driving the browser **inline** during discussion | Noisy investigation pollutes the lean thread (console/network/screenshots/log dumps). Dispatch `sprint:investigator` (mechanics → *Investigation (spike)*); read back only the distilled `finding:`/`evidence:`/`recommendation:`. A single `rg`/one-liner stays inline; multi-step, wall-of-output, or any browser work → delegate. |
 | *(nested mode)* Dispatching the stage-runner as `general-purpose` | It lacks the `Agent` tool, so it can't dispatch the executor/review subagents. In `Nesting: yes` mode use `sprint:stage-runner` (has `Agent`, inherits the main model). |
 | Using `sprint:stage-runner` when `Nesting: no` | On Desktop (and any runtime that withholds `Agent` from subagents) the stage-runner can't dispatch its nested executor/review — it dies the same way. With `Nesting: no` the **conductor** orchestrates flat (isolate → executor subagent → review subagent → verify subagent → land); never hand the whole stage to one subagent. |
 | Running the nesting probe per stage, or assuming a runtime | Probe **once** per sprint, record `Nesting:` in the header, reuse it. Don't hardcode yes/no — CLI and Desktop differ. |

@@ -171,6 +171,37 @@ git -C "$REPO" worktree remove "$WT" && git -C "$REPO" branch -d "$BR"
 ```
 `$REPO` is already on `feat/<sprint>` (the conductor never left it), so no `git switch` is needed — the merge always lands on the integration branch in the main tree, never in the worktree.
 
+## Investigation (spike) — on-demand, NOT a stage
+
+Mid-discussion (steps 1–2) or mid-sprint, the user sometimes raises something that needs **noisy
+investigation** — debugging, a repro, browser clicks, reading verbose logs. The conductor must **not**
+do it inline (console/network/screenshots/log dumps would pollute the lean discussion thread). Instead
+it dispatches `sprint:investigator` **foreground** (blocks on it) and reads back only a distilled
+finding. This is interleaved and one-off — no worktree of its own, no branch, no merge, never a stage row.
+
+```
+Agent(
+  subagent_type: "sprint:investigator",
+  description: "investigate <question>",
+  # no model override → inherits the conductor's model (debugging wants the strong model)
+  prompt: """
+  question: <what to find out / diagnose>
+  cwd: <$REPO  |  $REPO/$WT when a LIVE stage is the subject>   # cd here; investigate here
+  context: <1–3 lines: the symptom, suspected area, a URL>
+  worktree: <none  |  "$WT is a LIVE stage — read/run only, never edit it">
+  Persist docs/investigations/<slug>.md if the finding is substantial; else return terse.
+  """)
+```
+
+The conductor reads only the investigator's `finding:` / `evidence:` / `recommendation:` (or
+`blocked:`), folds what matters into the sprint doc's Decisions/Open-questions, and continues. It
+**never** streams the investigator's logs/screenshots/diffs into its own context. Browser work needs the
+claude-in-chrome extension connected; if it's down the investigator returns `blocked: connect the
+extension` with partial signal — don't scope a stage off unconfirmed signal. **Delegate vs inline:** a
+single `rg`/one-liner the conductor still runs itself; multi-step work, anything that produces a wall of
+output, or any browser interaction → dispatch the investigator. See `agents/investigator.md` for its
+full contract (distilled return, the read/throwaway worktree rule, findings persistence).
+
 ## Effort Scaling
 
 | Stage risk | codex effort (step 4) | mimo variant (step 4) | native model (step 4) | review effort (step 5) |
