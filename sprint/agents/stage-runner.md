@@ -26,14 +26,17 @@ the **repo root**; the exact commands are in the sprint skill's `mechanics.md`
 (steps 3–7). Follow it verbatim.
 
 **Model:** you intentionally have **no `model` of your own — you inherit the main
-(session) model.** This matters: the `/code-review` subagent you dispatch in §5 must
-run at the **main context's model**, and it gets there by inheriting from you. So you
-MUST NOT set a `model` override on the review dispatch (or on yourself). The **executor**
-is the exception that carries its own model: `mimo-code:mimo-delegate` is pinned sonnet;
-`sprint:stage-executor` (native) runs at the conductor-resolved model you pass it.
-**Native review exception:** if the native executor ran a model *stronger* than main
-(e.g. `opus` on a `sonnet` session), set `model: <that executor model>` on the §5 review
-dispatch too — never gate strong code with a weaker reviewer. Otherwise leave it unset.
+(session) model.** The §5 review model is a **conductor-resolved input**, never your
+pick: when the conductor passes a review model (the sprint-doc `Review: <model> (pinned)`
+header — the user's explicit choice), set exactly that `model` on the §5 review dispatch;
+when it passes none, set **no `model`** so the review inherits the main model through you.
+Never downgrade it — not for cost, not for a "trivial" stage. The **executor** carries its
+own model as before: `mimo-code:mimo-delegate` is pinned sonnet; `sprint:stage-executor`
+(native) runs at the conductor-resolved model you pass it.
+**Native executor floor (hard):** if the native executor ran a Claude model *stronger*
+than the resolved review model (e.g. `opus` executor on a `sonnet` session — even over a
+weaker `Review:` pin), set `model: <that executor model>` on the §5 review dispatch —
+never gate strong code with a weaker reviewer.
 
 ## Inputs (from the conductor)
 - `engine` — `codex` | `mimo` | `native` | `bare` (from the sprint-doc `Engine:` header).
@@ -41,6 +44,9 @@ dispatch too — never gate strong code with a weaker reviewer. Otherwise leave 
 - review/executor `effort` (and for mimo: the resolved `model`, `variant`, and the
   bare `handle` from the `mimo:<handle>` stage-line token; for native: the resolved
   executor `model` from the `model:<model>` stage-line token).
+- review `model` (optional) — from the sprint-doc `Review: <model> (pinned)` header.
+  Absent → the §5 dispatch carries no `model` (inherits main through you); the native
+  executor floor still applies either way.
 - `sdd` — `available`/`unavailable` from the conductor (mimo + native). `available` means
   **both** the SDD skill is present **and** the conductor judged this stage's tasks
   independent enough to fan out — coupled/single-file/sequential-TDD stages arrive as
@@ -69,9 +75,10 @@ dispatch too — never gate strong code with a weaker reviewer. Otherwise leave 
      when even a `stage-executor` subagent can't be dispatched; otherwise use native.
 3. **§5 Review** — dispatch the review as a **separate subagent**, **foreground**,
    invoking the **vendored `code-review` skill** via the Skill tool (`<effort> --fix`,
-   worktree as cwd — NOT the GitHub-PR `/code-review` plugin, NOT `ultra`). **Do NOT
-   set a `model` on this dispatch** — it inherits your model, which is the main/session
-   model. Loop unresolved items back to §4.
+   worktree as cwd — NOT the GitHub-PR /code-review plugin, NOT `ultra`). `model` on
+   this dispatch: the conductor-passed review model (`Review:` pin) or the native
+   executor floor when it's stronger; otherwise **unset** (inherits main through you).
+   Never your own pick. Loop unresolved items back to §4.
 4. **§6 Verify** — run the repo test/build in the worktree; on failure loop back to §4.
 5. **§7 Commit & land** — commit the worktree, `git merge --no-ff` into the integration
    branch, remove the worktree + stage branch.

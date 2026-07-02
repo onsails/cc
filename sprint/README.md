@@ -40,6 +40,7 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 | `/sprint mimo` | mimo (model resolved per stage). |
 | `/sprint codex` | codex. |
 | `/sprint mimo <provider/model> [variant]` | mimo, pinned to that model for the whole sprint. |
+| `/sprint … review <model>` | any engine; pins the per-stage review to that Claude model (default: the review inherits the session model). |
 
 Describe the milestone after the command. The skill probes capabilities, decomposes the milestone into stages, and drives them.
 

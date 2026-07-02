@@ -1,7 +1,7 @@
 ---
 name: sprint
 description: Use when one milestone is too large for a single spec or plan and needs several brainstorm-and-plan rounds before it ships — a long, multistage effort spanning sessions where the coding is handed off to an executor (codex, mimo, or native Claude subagents) while you stay the conductor. Triggers on "long multistage project", "many brainstorms and plans", "milestone with multiple stages", "resume where I left off", "delegate implementation to codex or mimo or a native subagent".
-argument-hint: "[mimo|codex|native] [<provider/model>|<model>] [variant] [milestone description]"
+argument-hint: "[mimo|codex|native] [<provider/model>|<model>] [variant] [review <model>] [milestone description]"
 ---
 
 # sprint
@@ -26,11 +26,12 @@ A milestone too big for one spec-and-plan is run as a **sprint**: a series of st
 
 Raw slash-command arguments: `$ARGUMENTS`
 
-Parse them as `[mimo|codex|native] [<provider/model>|<model>] [variant] [milestone description]` (empty when the skill was triggered by description match rather than `/sprint` — then read intent from the user's message):
+Parse them as `[mimo|codex|native] [<provider/model>|<model>] [variant] [review <model>] [milestone description]` (empty when the skill was triggered by description match rather than `/sprint` — then read intent from the user's message):
 
 - A leading `mimo`, `codex`, or `native` token → the **engine** (see [Engine selection](#engine-selection)).
 - A `<provider/model>` token (contains `/`, mimo only) → **pin** that model for the whole sprint; a following `minimal|low|medium|high|max` token → the pinned **variant**. A pin records `Engine: mimo (model: …, variant: …, pinned)` and skips per-stage model resolution.
 - For `native`, a following **bare model alias** (no `/`, e.g. `opus`/`sonnet`) → **pin** that model for the whole sprint (records `Engine: native (model: …, pinned)` and skips the per-stage ASK).
+- A `review <model>` token pair (any engine, after the engine/model/variant tokens) → **pin the review model** for the whole sprint: record the separate header line `Review: <model> (pinned)`; every §5 review then dispatches at that Claude model. Without it the review inherits the main/session model (Model policy). Do **not** let a `review …` pair fall through into the milestone description.
 - Remaining text → the **milestone description** that seeds the decomposition brainstorm. No description **and** an existing sprint doc → resume at the first non-done stage.
 
 ## Capability Probes (run FIRST, every invocation)
@@ -71,6 +72,10 @@ Record the engine in the sprint-doc header. **The model is stored in the header 
 - `Engine: native` — **ASK the user which Claude model every stage** (the conductor already knows the available models from context — **no resolve probe** — and offers them with the risk-scaled one recommended).
 - `Engine: native (model: <model>, pinned)` — **only** on an explicit user pin like `/sprint native <model>`; reuse the pinned model every stage (skips the per-stage ASK).
 - `Engine: bare` — last-resort fallback when no executor subagent can be dispatched at all (the stage-runner implements stages itself, mechanics §4d). Normally unreachable; recorded so a resumed bare sprint still has a recognizable header. (Prefer `native` over `bare` whenever a subagent CAN be dispatched — it keeps the orchestrator lean and lets the model scale.)
+
+The **review model** gets its own optional header line — written **only on the user's explicit pick**, never on the conductor's initiative:
+
+- `Review: <model> (pinned)` — set by a `/sprint … review <model>` arg, by the bundled review-model question (Conductor pre-dispatch), or by a mid-sprint user request ("review at opus from now on" → record it; applies from the next stage dispatch). Every §5 review then dispatches at that Claude model. **Absent → the review inherits the main/session model** (the default; Model policy). The executor's model/variant is a separate knob — the two never share a header line.
 
 ## The Sprint Doc
 
@@ -116,6 +121,8 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 
 Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the stage line. Only a **pinned** sprint (`Engine: mimo (… pinned)`) skips resolve+ASK (reuses the pin, still a fresh handle per stage); `Engine: codex` has no model resolution.
 
+**Review model (once per sprint, any engine — bundled, never a separate round):** if the header has no `Review:` line yet, append one **review-model question to an `AskUserQuestion` round that is already happening** — the engine-selection ASK, or the first unpinned stage's model/variant ASK. Offer `inherit session model` (*Recommended* — today's default) plus the stronger Claude models (e.g. `opus`), each with a one-line description; never offer a model weaker than the stage executor's Claude model. `inherit` → no `Review:` line, and don't re-ask on later stages; a model → write `Review: <model> (pinned)`. A fully pinned invocation that triggers no ASK at all (e.g. `/sprint codex …`) keeps the inherit default silently — the user can still request a review model any time and the conductor records the header then. Only bundle this question into an existing round; the review knob alone never justifies interrupting.
+
 **Conductor pre-dispatch (engine=native, unless pinned):** **no resolve probe** — the conductor already knows the available Claude models from context. It **ASKs the user which model** for the stage (`AskUserQuestion`), offering the known models (typically `opus`/`sonnet`) with the **risk-scaled** one *Recommended* (risky/wide blast radius → `opus`; low/normal → `sonnet`), each option carrying a one-line description. The same discipline as mimo applies: a "low-risk"/"mechanical"/"trivial" stage, the proactive style, cost, or "not wanting to interrupt" are **not** reasons to skip the ASK. **Offer to pin (first unpinned stage only):** right after the first pick, `AskUserQuestion` once *reuse this model for the remaining stages?* → **Yes** rewrites the header to `Engine: native (model: …, pinned)`, skipping the per-stage ASK thereafter (still the user's explicit choice). Record the chosen model as `model:<model>` on the stage line (so a resumed stage reuses the same model); there is **no handle** — native has no session id.
 
 **Dispatch (by `Nesting:` header):** steps 3–7 always run in subagents — diffs/logs never reach the conductor.
@@ -125,7 +132,7 @@ Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the st
 
 **The exact per-mode commands and the flat sub-steps are in `mechanics.md` §0** — open it before steps 3–7. Either way the conductor reads only terse reports and **never runs or monitors the executor** (no launcher calls, no PID/NDJSON/output polling).
 
-**Model policy:** the mimo executor (`mimo-code:mimo-delegate`) is **sonnet**; the native executor (`sprint:stage-executor`) runs at the **conductor-ASKed model** (scaled to stage risk — risky→`opus`). The **review inherits the main/session model** — never set a `model` on the review dispatch, because the review is the quality gate and must run at the main context's model. **Native exception:** if the native executor ran at a model *stronger* than main (e.g. `opus` on a `sonnet` session), dispatch the review at that **executor** model instead of inheriting — the gate must never be weaker than the code it gates. A verify subagent may be `sonnet`. The conductor runs only steps 1–2, the pre-dispatch resolve/ASK, the `Nesting: no` git plumbing (isolate/land), and step 8.
+**Model policy:** the mimo executor (`mimo-code:mimo-delegate`) is **sonnet**; the native executor (`sprint:stage-executor`) runs at the **conductor-ASKed model** (scaled to stage risk — risky→`opus`). The **review model is conductor-resolved**: the `Review:` header when present (the user's pick — dispatch the review with `model: <that model>`), else **inherit the main/session model** (set no `model` on the review dispatch). **Executor floor (hard, native only):** if the native executor ran a Claude model *stronger* than the resolved review model (e.g. `opus` executor on a `sonnet` session with no pin — or even over a weaker `Review:` pin), dispatch the review at the **executor** model — the gate must never be weaker than the code it gates. The conductor never picks or *downgrades* the review model on its own initiative: a below-session review happens only via the user's explicit `Review:` pick, and cost/"trivial stage" never justify an auto-downgrade. A verify subagent may be `sonnet`. The conductor runs only steps 1–2, the pre-dispatch resolve/ASK, the `Nesting: no` git plumbing (isolate/land), and step 8.
 
 **Isolation invariant (non-negotiable):** stage **code** never touches the main checkout. Every edit, review fix, and the stage commit happen on the **stage branch `$BR` inside the worktree `$WT`**. Stage code reaches the integration branch **only** through the §7 `git merge --no-ff "$BR"`. The stage-runner must **never** edit stage code in the main tree and **never** `git commit` stage code onto the integration or base branch directly — even when it seems faster, even if the worktree step was skipped, even for a "one-line" change. The *only* thing committed directly to the integration branch is the conductor's step-8 sprint-doc bookkeeping. If step 3 can't isolate (integration branch missing, dirty main tree, `git worktree add` fails), **report `blocked` and stop** — never fall back to working in the main tree.
 
@@ -147,7 +154,9 @@ Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the st
 | Offering all five variants (+ a "default") in one `AskUserQuestion` | `AskUserQuestion` caps at **4** options. Offer a ≤4 effort menu (`default` + risk-relevant variants, one-line descriptions, risk-scaled default *Recommended*); `minimal`/`medium` via **Other**. |
 | Re-ASKing model+variant every stage and never offering to pin | After the first unpinned stage's picks, ASK once to reuse them for the rest (rewrites the header to `(… pinned)`). Turns 2×N prompts into 2; the pin is the user's choice, not a conductor auto-skip. |
 | *(native)* Implementing the plan inline in the conductor/stage-runner instead of dispatching `sprint:stage-executor` | That's `bare`, not `native`. native dispatches a dedicated executor subagent (at the ASKed model, into `$WT`) so the orchestrator stays lean and the model can scale. Inline = polluted context + no model knob. |
-| *(native)* Leaving the review at main when the executor ran a stronger model | If native executor = `opus` on a `sonnet` session, dispatch the review at `opus` too — never gate strong code with a weaker reviewer (Model policy → Native exception). |
+| *(native)* Leaving the review at main when the executor ran a stronger model | If native executor = `opus` on a `sonnet` session, dispatch the review at `opus` too — even over a weaker `Review:` pin. Never gate strong code with a weaker reviewer (Model policy → executor floor). |
+| Ignoring a `Review:` pin (review dispatched at inherit), or the conductor writing/changing `Review:` itself | The review model is the **user's** knob — set via the `review <model>` arg, the bundled ASK question, or a mid-sprint request; the conductor only records it. Pinned → every §5 dispatch carries `model: <that model>`; unpinned → no `model` override, and never auto-downgrade to save cost. |
+| Asking the review-model question as its own `AskUserQuestion` round, or re-asking it per stage | It's once per sprint, **bundled** into an ASK round that already happens (engine selection, or the first stage's model/variant ASK). `inherit` answer → no header line, no re-ask. |
 | Merging/removing the worktree before committing | The executor and `--fix` leave changes uncommitted — commit first (mechanics §7). |
 | Marking a stage `done` before it merged + passed verify | `done` = merged **and** green. |
 | Executor stopped/stalled mid-stage → reported `blocked` or re-ran fresh | Resume first: codex `task --resume-last`; mimo re-dispatch `mimo-delegate` with the recorded handle; native re-dispatch `stage-executor` with `mode: resume` (same cwd + model) so it reads the partial worktree diff and finishes the rest (mechanics §4). A blind fresh run loses context / re-does or clobbers the partial edits. |
@@ -161,4 +170,5 @@ Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the st
 - `Nesting: no` and about to hand the whole stage to one `sprint:stage-runner` → STOP. That subagent can't dispatch its nested executor/review on this runtime; orchestrate the stage flat from the conductor (mechanics §0).
 - Executor stopped before finishing and about to launch a fresh session (or report `blocked`) → resume first: codex `--resume-last`; mimo re-dispatch with the recorded handle; native re-dispatch `stage-executor` with `mode: resume` (same cwd + model) (mechanics §4).
 - About to print the whole mimo model list for the user to retype an id, or about to ASK model+variant for another stage without ever offering to pin → STOP. Narrow provider-first, and offer the pin after the first stage (Conductor pre-dispatch).
+- About to dispatch the §5 review at a model weaker than the native executor's, or at anything other than the user's `Review:` pin → STOP. The gate is never weaker than the code; the pin is the user's, not yours.
 - No sprint doc yet but already brainstorming a stage → create the branch + doc and decompose first.
