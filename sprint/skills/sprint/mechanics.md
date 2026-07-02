@@ -9,6 +9,26 @@ WHO runs steps 3–7 depends on the sprint-doc `Nesting:` header (set once by th
 - **`Nesting: yes` (nested):** the conductor dispatches **one `sprint:stage-runner` subagent** that runs all of §3–§7 and dispatches the executor (§4) and review (§5) as **nested** subagents. The stage-runner carries the **`Agent` tool** and has **no `model`** (inherits the main/session model, so an unpinned §5 review inherits it too; a `Review:` pin travels as a conductor input the stage-runner sets on the §5 dispatch). The conductor sees only its terse report.
 - **`Nesting: no` (flat):** subagents can't dispatch subagents (e.g. Claude Desktop withholds `Agent` from subagents), so the **conductor** drives the stage, dispatching each isolated step itself (all `main → subagent`, one level): §3 isolate = conductor `git` plumbing; §4 execute = dispatch the executor subagent (mimo → `mimo-code:mimo-delegate` sonnet; native → `sprint:stage-executor` at the conductor-ASKed model); §5 review = dispatch a `general-purpose` review subagent (model per §5: `Review:` pin / native floor → set it, else no override → inherits main); §6 verify = dispatch a verify subagent; §7 land = conductor `git` plumbing. The conductor reads only terse reports — never diffs/logs, never the executor's output.
 
+**Nested dispatch template (conductor → stage-runner, `Nesting: yes`, one per stage).** Every input below is a value the conductor **already resolved** (pre-dispatch ASKs, probes, minted handle, the sprint-doc headers) — the stage-runner resolves nothing:
+```
+Agent(
+  subagent_type: "sprint:stage-runner",
+  # NO model field — the stage-runner inherits the main/session model
+  description: "stage $S",
+  prompt: """
+  engine: <codex|mimo|native|bare>     # sprint-doc Engine: header
+  sprint: <sprint>   S: <NN>-<stage>   title: <stage title>
+  plan: docs/plans/$S-plan.md
+  review-effort: <high|xhigh|max>      # Effort Scaling, by stage risk
+  review-model: <model>                # ONLY when the header has `Review: <model> (pinned)`; omit the line otherwise
+  sdd: <available|unavailable>         # conductor's two-gate call (§4c) — forward verbatim
+  # engine=mimo:   model: <provider/model>   variant: <v>   handle: <bare handle from mimo:<handle>>
+  # engine=native: model: <Claude model from the stage line's model:<model>>
+  # engine=codex:  effort: <high|xhigh>      (Effort Scaling; no model input)
+  Run stage $S per mechanics §3–§7; return only `landed @<sha>` (+ files count) or `blocked: <reason>`.
+  """)
+```
+
 In both modes: stage code lives only on `$BR` in `$WT`, the review runs at the **conductor-resolved review model** (`Review:` header pin, else the main/session model; native executor floor — §5), the mimo executor is **sonnet**, and the native executor runs at the **conductor-ASKed model**.
 
 Slugs: `<sprint>` = milestone slug (e.g. `auth`); `<stage>` = stage slug (e.g. `schema`). Let `S=<NN>-<stage>`, `WT=.worktrees/$S`, `BR=feat/<sprint>-$S`. The **stage** branch `$BR` (e.g. `feat/auth-01-schema`) is distinct from the **integration** branch `feat/<sprint>` (e.g. `feat/auth`). Run everything from the **repo root**; never `cd` into `$WT` unscoped — worktree-scoped commands use `git -C "$WT"` or a `(cd "$WT" && …)` subshell, and the land commands (§7) use `git -C "$REPO"` so they always act on the main tree, never the worktree.
@@ -211,4 +231,4 @@ full contract (distilled return, the read/throwaway worktree rule, findings pers
 | normal | xhigh | high | sonnet | xhigh |
 | risky / wide blast radius | xhigh | max | opus | max |
 
-The `codex effort` and `mimo variant` columns are **separate vocabularies** — codex `--effort` is `high`/`xhigh`/`max`; mimo `--variant` is `minimal`/`low`/`medium`/`high`/`max` (it has **no `xhigh`**), so the two columns differ on purpose. codex maps its column to `--effort`; mimo maps its column to `--variant` — the **risk-scaled** value here is the one the conductor marks *Recommended* in the per-stage variant ASK (≤4 menu: `default` + the risk-relevant variants; `minimal`/`medium` via Other), not an auto-pick. native maps to the executor **model** (the conductor offers the risk-scaled model in its per-stage ASK — the user picks). The `native model` column is likewise the **recommended default** in that ASK. The `review effort` column scales the review's *effort* only; the review's **model** is orthogonal — the `Review:` header pin when the user set one, else inherit main (§5). `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
+The `codex effort` and `mimo variant` columns are **separate vocabularies** — codex `--effort` is `high`/`xhigh`/`max`; mimo `--variant` is `minimal`/`low`/`medium`/`high`/`max` (it has **no `xhigh`**), so the two columns differ on purpose. codex maps its column to `--effort`; mimo maps its column to `--variant` — the **risk-scaled** value here is the one the conductor marks *Recommended* in the per-stage variant ASK (≤4 menu: `default` + the risk-scaled variant — always in the menu — + neighbours; the rest via Other), not an auto-pick. native maps to the executor **model** (the conductor offers the risk-scaled model in its per-stage ASK — the user picks). The `native model` column is likewise the **recommended default** in that ASK. The `review effort` column scales the review's *effort* only; the review's **model** is orthogonal — the `Review:` header pin when the user set one, else inherit main (§5). `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.

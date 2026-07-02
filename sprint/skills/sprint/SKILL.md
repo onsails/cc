@@ -20,7 +20,7 @@ A milestone too big for one spec-and-plan is run as a **sprint**: a series of st
 - Long, multistage work **spanning sessions**; you resume "what stage am I on".
 - You delegate implementation to an **executor** (codex, mimo, or a native subagent) while steering design.
 
-**Not for:** a single-spec feature; one small task (`codex:rescue` directly).
+**Not for:** a single-spec feature; one small task (delegate directly — a plain subagent, `mimo-code`, or `codex:rescue`).
 
 ## Invocation arguments
 
@@ -62,7 +62,7 @@ Probe; never assume. Adapt, and tell the user to install whatever's missing.
 The executor is **codex**, **mimo**, or **native** (a native Claude `sprint:stage-executor` subagent). **mimo** and **native** are always available (mimo is a hard dependency; native is Claude itself — no external CLI, no probe); **codex** is optional (probe `codex:rescue`).
 
 - **Explicit arg wins.** `/sprint mimo`, `/sprint codex`, or `/sprint native` picks the engine directly. If codex is requested but absent → tell the user to install the codex plugin (or pick mimo/native), then stop.
-- **No arg:** `AskUserQuestion` across the available engines — **mimo** and **native** always, plus **codex** if probed. (mimo is still the safe default to recommend.) Don't auto-skip the question: native and mimo are both always present, so there's never a single forced engine.
+- **No arg:** `AskUserQuestion` across the available engines — **native** and **mimo** always, plus **codex** if probed. (**native** is the default to recommend — no external CLI, no launcher, no model-resolution machinery.) Don't auto-skip the question: native and mimo are both always present, so there's never a single forced engine.
 
 Record the engine in the sprint-doc header. **The model is stored in the header ONLY when pinned:**
 
@@ -116,7 +116,7 @@ Steps **1–2 are interactive, in the main context**. Steps **3–7 run in a wor
 **Conductor pre-dispatch (engine=mimo, unless pinned):** before the stage executes, the conductor dispatches `mimo-resolve` for the authenticated `options` (+ its recommended model), then picks model+variant **with the user** — never silently. The proactive style, a "low-risk"/"mechanical"/"trivial" stage, cost, or "not wanting to interrupt" are **not** reasons to skip the ASK; the user chose the engine, not the model.
 
 - **Model.** `options` has **exactly one** model → auto-pick (asking is pointless). **≤4** → one `AskUserQuestion` listing them. **>4** (the common real case — a single provider can expose *dozens*) → **narrow, never dump**: first `AskUserQuestion` the **provider** (the authenticated set is small), then a second `AskUserQuestion` of **≤4 models** for that provider — lead with `mimo-resolve`'s recommended id, and rely on the auto-added **Other** free-text for the long tail. Printing the whole catalogue for the user to retype an id verbatim is the anti-pattern this replaces.
-- **Variant.** One `AskUserQuestion` with a **≤4 effort menu** — `AskUserQuestion` caps at 4 options, so you **cannot** list all five variants + a default. Offer `default` (omit `--variant`) plus the risk-relevant variants, **each with a one-line description**, and mark the **stage-risk-scaled** one (mechanics Effort Scaling) *Recommended*; `minimal`/`medium` reach via **Other**.
+- **Variant.** One `AskUserQuestion` with a **≤4 effort menu** — `AskUserQuestion` caps at 4 options, so you **cannot** list all five variants + a default. The menu is `default` (omit `--variant`) + the **stage-risk-scaled** variant (mechanics Effort Scaling) — **always in the menu, marked *Recommended*** — + its nearest neighbours up to 4 options, **each with a one-line description**; the variants that didn't fit reach via **Other**.
 - **Offer to pin (first unpinned stage only).** Right after the first stage's picks, `AskUserQuestion` once: *reuse this model+variant for the remaining stages?* **Yes** → rewrite the header to `Engine: mimo (model: …, variant: …, pinned)` so later stages skip resolve+ASK (still a fresh handle each). This is the discoverable form of the `/sprint mimo <provider/model> <variant>` pin; it turns *2 prompts × N stages* into *2 total* and is still the **user's** explicit choice, not a conductor auto-skip.
 
 Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the stage line. Only a **pinned** sprint (`Engine: mimo (… pinned)`) skips resolve+ASK (reuses the pin, still a fresh handle per stage); `Engine: codex` has no model resolution.
@@ -151,7 +151,7 @@ Then mint a unique handle `<stage>-<rand4>` and record `mimo:<handle>` on the st
 | Conductor running or monitoring the executor — calling the launcher, polling mimo's PID / NDJSON / output files | That's the executor subagent's job (`mimo-delegate`, foreground) — nested under the stage-runner when `Nesting: yes`, dispatched directly by the conductor when `Nesting: no`. Either way the conductor only awaits a terse report and never touches executor machinery. A subagent that "keeps yielding" is **not** a licence to take over monitoring in main. |
 | Auto-picking the mimo/native model because the stage is "low-risk"/"mechanical" or to avoid interrupting | The user chose the engine, not the model. mimo: auto-pick **only** when `options` has exactly one model. native: **always ASK** which Claude model (offering the risk-scaled default). Proactivity and "right-sizing cost" never override this — only an explicit user pin does. |
 | Dumping the whole model catalogue for the user to type an id (the old ">4 → name an id" path) | A real provider can expose *dozens* of models. **Narrow provider-first**: ASK the provider, then ≤4 models for it (recommended id first, **Other** for the tail). Never a wall of ids to retype every stage. |
-| Offering all five variants (+ a "default") in one `AskUserQuestion` | `AskUserQuestion` caps at **4** options. Offer a ≤4 effort menu (`default` + risk-relevant variants, one-line descriptions, risk-scaled default *Recommended*); `minimal`/`medium` via **Other**. |
+| Offering all five variants (+ a "default") in one `AskUserQuestion` | `AskUserQuestion` caps at **4** options. Menu = `default` + the risk-scaled variant (*Recommended*, always in the menu) + neighbours up to 4; the rest via **Other**. |
 | Re-ASKing model+variant every stage and never offering to pin | After the first unpinned stage's picks, ASK once to reuse them for the rest (rewrites the header to `(… pinned)`). Turns 2×N prompts into 2; the pin is the user's choice, not a conductor auto-skip. |
 | *(native)* Implementing the plan inline in the conductor/stage-runner instead of dispatching `sprint:stage-executor` | That's `bare`, not `native`. native dispatches a dedicated executor subagent (at the ASKed model, into `$WT`) so the orchestrator stays lean and the model can scale. Inline = polluted context + no model knob. |
 | *(native)* Leaving the review at main when the executor ran a stronger model | If native executor = `opus` on a `sonnet` session, dispatch the review at `opus` too — even over a weaker `Review:` pin. Never gate strong code with a weaker reviewer (Model policy → executor floor). |
