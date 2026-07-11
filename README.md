@@ -17,14 +17,14 @@ Strict Rust development standards with FAIL FAST error handling.
 
 ### sprint
 
-Orchestrate one large milestone as staged brainstorm/plan/execute cycles in a living sprint doc.
+Orchestrate one large milestone as staged brainstorm/plan/execute cycles in a living sprint doc. Runs on Claude Code or Oh My Pi (OMP).
 
 - Decomposes a multistage milestone into stages; resumes across sessions from the doc
-- Per stage: brainstorm spec → write plan → executor implements → `/code-review --fix` → verify → land
-- Keeps the main context a lean conductor; runs each stage in an isolated worktree subagent
-- Delegates implementation to an **executor**: mimo (hard dependency, always present) or codex (optional)
-- Engine chosen by arg (`/sprint mimo|codex`), else asked when codex is present, else mimo; recorded in the sprint doc for resume
-- Depends on `mimo-code` (auto-installed); degrades gracefully without `superpowers`/`codex`
+- Per stage: brainstorm spec → write plan → executor implements → dedicated `sprint-reviewer` gate (parallel specialists, fix, re-review) → verify → land
+- Keeps the main session a lean conductor; nests each stage through a `sprint-stage-runner` subagent (Claude Code: probed once per sprint; OMP: requires `task.maxRecursionDepth >= 3`) or falls back to one subagent per step
+- Delegates implementation to an **executor**: native subagents on Claude Code or OMP (recommended default), plus mimo or codex on Claude Code only
+- Engine chosen by arg (`/sprint native|mimo|codex`) or an interactive runtime-supported menu; executor and review models are explicit choices recorded for resume
+- Depends on `mimo-code` for the Claude Code mimo engine; degrades gracefully without `superpowers`/`codex`; OMP currently offers native only
 
 [Full documentation →](./sprint/README.md)
 

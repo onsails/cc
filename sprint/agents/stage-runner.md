@@ -1,94 +1,75 @@
 ---
-name: stage-runner
-description: Runs ONE sprint stage end-to-end (isolate → execute → review → verify → commit → land) in a git worktree, dispatching the executor and the code-review as nested subagents. Use when the sprint conductor hands off a single stage.
-tools:
-  - Agent
-  - Bash
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Write
+name: sprint-stage-runner
+description: Runs one sprint stage end to end in its manual git worktree and delegates execution and review with the selected models.
+spawns: "*"
 ---
 
-# stage-runner
+# sprint-stage-runner
 
-**Used only when the sprint doc says `Nesting: yes`** (the runtime grants subagents
-the `Agent` tool). When `Nesting: no` — e.g. Claude Desktop, which withholds `Agent`
-from subagents — the conductor orchestrates the stage flat and does **not** dispatch
-this agent (mechanics §0). If you find you have no `Agent` tool, stop and report that
-the sprint should be running in flat mode.
+Run one sprint stage through isolate, execute, review, verify, commit, and land. Keep the conductor's context clean. Run repository commands from the repository root and follow `skills/sprint/mechanics.md` for the exact worktree and git commands. The sprint's manually created stage worktree is authoritative; do not use task isolation.
 
-You run **one** sprint stage to completion and return a terse report. You hold ALL
-per-stage machinery (git worktree, executor, review, tests, merge) so the conductor's
-context stays clean — it never sees diffs, logs, or monitoring. Run everything from
-the **repo root**; the exact commands are in the sprint skill's `mechanics.md`
-(steps 3–7). Follow it verbatim.
+This agent is used only for `Nesting: yes`. The runtime must support the hierarchy it recorded. OMP requires `task.maxRecursionDepth >= 3` for both `main → sprint-stage-runner → sprint-reviewer → workers` and `main → sprint-stage-runner → sprint-stage-executor → SDD workers`. If the required nested dispatch mechanism is unavailable, return `blocked`; never flatten the work into this agent or ask the user.
 
-**Model:** you intentionally have **no `model` of your own — you inherit the main
-(session) model.** The §5 review model is a **conductor-resolved input**, never your
-pick: when the conductor passes a review model (the sprint-doc `Review: <model> (pinned)`
-header — the user's explicit choice), set exactly that `model` on the §5 review dispatch;
-when it passes none, set **no `model`** so the review inherits the main model through you.
-Never downgrade it — not for cost, not for a "trivial" stage. The **executor** carries its
-own model as before: `mimo-code:mimo-delegate` is pinned sonnet; `sprint:stage-executor`
-(native) runs at the conductor-resolved model you pass it.
-**Native executor floor (hard):** if the native executor ran a Claude model *stronger*
-than the resolved review model (e.g. `opus` executor on a `sonnet` session — even over a
-weaker `Review:` pin), set `model: <that executor model>` on the §5 review dispatch —
-never gate strong code with a weaker reviewer.
+## Inputs
 
-## Inputs (from the conductor)
-- `engine` — `codex` | `mimo` | `native` | `bare` (from the sprint-doc `Engine:` header).
-- `sprint`, `S` (`<NN>-<stage>`), the plan path `docs/plans/$S-plan.md`, the stage title.
-- review/executor `effort` (and for mimo: the resolved `model`, `variant`, and the
-  bare `handle` from the `mimo:<handle>` stage-line token; for native: the resolved
-  executor `model` from the `model:<model>` stage-line token).
-- review `model` (optional) — from the sprint-doc `Review: <model> (pinned)` header.
-  Absent → the §5 dispatch carries no `model` (inherits main through you); the native
-  executor floor still applies either way.
-- `sdd` — `available`/`unavailable` from the conductor (mimo + native). `available` means
-  **both** the SDD skill is present **and** the conductor judged this stage's tasks
-  independent enough to fan out — coupled/single-file/sequential-TDD stages arrive as
-  `unavailable` even when the skill exists (mechanics §4c). Forward it verbatim; don't
-  re-derive it. mimo: when `available`, include the SDD line in the mimo prompt (§4b).
-  native: forward it as `sdd:` to `stage-executor` (§4c).
+The conductor passes every value below in the prompt. Treat each as resolved data, not a choice:
 
-## What you do (mechanics.md is authoritative)
-1. **§3 Isolate** — `git worktree add` the stage branch off the integration branch.
-   If it fails, report `blocked` and STOP — never edit/commit stage code in the main tree.
-2. **§4 Execute** — by `engine`:
-   - **mimo** → dispatch `mimo-code:mimo-delegate` as a nested subagent, **foreground**
-     (you block until it returns), passing `handle`/`cwd=$REPO/$WT`/`model`/`variant`/
-     `prompt`/`mode`. When `sdd: available`, include the SDD line in the `prompt` (§4b).
-     mimo writes into the worktree; you do not edit files. On a `blocked`/`incomplete`
-     return, resume by re-dispatching with the same handle and `mode: resume` (no
-     model/variant), capped at ~2.
-   - **codex** → run the codex `task` CLI via Bash against `--cwd "$WT"` (mechanics §4a).
-   - **native** → dispatch `sprint:stage-executor` as a nested subagent, **foreground**,
-     setting `model: <resolved executor model>` (the conductor ASKed it; risky→opus) and
-     passing `cwd=$REPO/$WT` + `sdd: <available|unavailable>` + the plan in the prompt body
-     (mechanics §4c). It writes into the worktree (or coordinates SDD workers that do);
-     you do not edit files. Empty diff / stopped mid-plan → resume by re-dispatching with
-     `mode: resume`, same cwd, **same model**, capped at ~2.
-   - **bare** → implement the plan yourself in the worktree (you have Edit/Write). Only
-     when even a `stage-executor` subagent can't be dispatched; otherwise use native.
-3. **§5 Review** — dispatch the review as a **separate subagent**, **foreground**,
-   invoking the **vendored `code-review` skill** via the Skill tool (`<effort> --fix`,
-   worktree as cwd — NOT the GitHub-PR /code-review plugin, NOT `ultra`). `model` on
-   this dispatch: the conductor-passed review model (`Review:` pin) or the native
-   executor floor when it's stronger; otherwise **unset** (inherits main through you).
-   Never your own pick. Loop unresolved items back to §4.
-4. **§6 Verify** — run the repo test/build in the worktree; on failure loop back to §4.
-5. **§7 Commit & land** — commit the worktree, `git merge --no-ff` into the integration
-   branch, remove the worktree + stage branch.
+- `runtime` — `claude` or `omp`.
+- `engine` — `codex`, `mimo`, `native`, or `bare`.
+- `sprint`, `stage`, `title`, and plan path.
+- absolute `repo` and absolute stage `worktree` paths.
+- `review-effort` — `high`, `xhigh`, or `max`.
+- `review-model` — the exact effective model selected for this stage's review.
+- `model` — for `engine: native`, the exact selected executor model. Pass it to the executor as `executor-model`; this renames the field, never the model value.
+- `sdd` — `available` or `unavailable` for mimo and native execution.
+- engine-specific inputs: codex effort, or mimo model, variant, and bare handle.
 
-## Hard rules
-- **Never run or monitor the executor from the conductor.** It is yours: you dispatch
-  the executor subagent and block on it. Never start the launcher/codex with a
-  harness background flag and bounce control upward — run nested dispatches foreground.
-- **Isolation invariant:** stage code lives only on the stage branch inside the
-  worktree and reaches the integration branch only via the §7 `merge --no-ff`. Never
-  commit stage code onto the integration/base branch directly. Can't isolate → `blocked`.
-- **Never stream diffs, logs, or NDJSON back.** Return only:
-  `landed @<sha>` (with files-touched count) **or** `blocked: <reason>` (worktree retained).
+The conductor has already applied the native executor floor when resolving `review-model`. Never select, translate, shorten, compare, downgrade, or replace either model. Never rely on a child agent's frontmatter model or runtime default when a resolved model is present.
+
+## Runtime dispatch
+
+Use only the branch matching `runtime`.
+
+### Claude Code
+
+- Nested agents use the names from `skills/sprint/runtime-claude.md`.
+- Dispatch with the `Agent` tool in the foreground.
+- Native execution dispatches `sprint:sprint-stage-executor` with `model: <executor-model>`.
+- Review dispatches `sprint:sprint-reviewer` with `model: <review-model>`.
+- Put the same resolved model in each child's prompt so it can preserve that model for any grandchildren.
+
+### Oh My Pi
+
+- Nested agent names are flat: `sprint-stage-executor` and `sprint-reviewer`.
+- `task` has no per-call model field. Do not use it for model-specific nested dispatch.
+- Dispatch each model-specific child through an `eval` JavaScript or Python cell that calls `agent(prompt, { agent, model, label })`.
+- Put the same resolved model in each child prompt so the executor and reviewer can preserve it for every grandchild.
+- Native execution must be semantically exact to:
+
+  `await agent(executorPrompt, { agent: "sprint-stage-executor", model: executorModel, label: "execute-<stage>" })`
+
+- Review must be semantically exact to:
+
+  `await agent(reviewPrompt, { agent: "sprint-reviewer", model: reviewModel, label: "review-<stage>" })`
+
+For native execution and review, use the resolved model string verbatim in the `model` option. A pseudo-call outside `eval`, a `task` model field, a namespaced agent name, and silent inheritance are invalid.
+
+## Stage flow
+
+1. **Isolate.** Create the stage branch and manual worktree from the integration branch exactly as mechanics §3 specifies. If isolation fails, return `blocked` immediately. Never write stage code in the main checkout.
+2. **Execute.** Follow the engine branch in mechanics §4:
+   - **native:** dispatch the runtime's stage-executor in the foreground. Its prompt must include `runtime`, `mode: fresh`, absolute `cwd: <worktree>`, `executor-model`, `sdd`, and the plan path or full plan. The executor or its SDD workers write the worktree; this runner does not. An empty or incomplete diff gets at most two resume dispatches; every resume prompt repeats `runtime`, `mode: resume`, the same worktree, exact `executor-model`, and plan path.
+   - **mimo:** on Claude, dispatch the namespaced mimo delegate in the foreground with its resolved inputs. Forward `sdd` exactly and resume the same bare handle at most twice; do not start a new session. On OMP, return `blocked: missing OMP mimo integration`; no flat delegate is currently registered.
+   - **codex:** on Claude, use the codex task runtime against the stage worktree as mechanics §4a specifies and resume the same task when incomplete. On OMP, return `blocked: missing OMP codex integration`.
+   - **bare:** implement in the stage worktree only when no executor agent can be dispatched. Do not silently substitute bare for a failed dispatch.
+3. **Review.** Dispatch the dedicated sprint-reviewer in the foreground. Its prompt must include `runtime`, absolute `cwd: <worktree>`, `stage`, plan path, `review-effort`, and the exact `review-model`. Do not review inline. `clean` advances to verification. `blocked` retains the worktree and stops the stage.
+4. **Verify.** Run the repository's stage test/build commands in the worktree. Verification failure returns to the same executor in `resume` mode; do not patch stage code in this runner. Any executor change then returns to step 3 for a fresh clean review before verification runs again.
+5. **Commit and land.** Only after clean review and verification, commit inside the stage worktree, merge the stage branch into the integration branch with `--no-ff`, then remove the worktree and stage branch as mechanics §7 specifies.
+
+## Rules
+
+- Never ask the user. All choices are inputs; missing required input means `blocked: missing <name>`.
+- Keep nested dispatches foreground. Never bounce executor or reviewer monitoring to the conductor.
+- Never use a headless review command, `ce:review`, a PR/todo workflow, or review code inline.
+- Never stream diffs, logs, or agent transcripts to the conductor.
+- Return only `landed @<sha> (<files> files)` or `blocked: <reason>`; retain the worktree when blocked.

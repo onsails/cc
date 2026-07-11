@@ -47,3 +47,6 @@ tool other than Read; the user must never see a real question from you.
   no launcher, no model-resolution machinery"), mimo and codex offered with trade-off
   descriptions; review-model question bundled in the same call, `inherit session model
   (Recommended)`.
+- 2026-07-11 · post runtime-portability changes (GPT-5.6) · **PASS** — one
+  `AskUserQuestion` call offered native/mimo/codex with `native (Recommended)` and
+  bundled the review-model question with `inherit session model (Recommended)`.

@@ -1,234 +1,191 @@
-# sprint — Mechanics
+# sprint — shared mechanics
 
-Exact commands for per-stage lifecycle steps 3–7, run **from the repo root**. The COMMANDS are identical in both modes; only **who dispatches each step** differs (see §0).
+This file defines the runtime-neutral stage lifecycle. Run it from the repository root. Load the runtime adapter selected by the sprint document before dispatching any agent:
 
-## 0. Orchestration modes (read the `Nesting:` header)
+- [runtime-claude.md](runtime-claude.md)
+- [runtime-omp.md](runtime-omp.md)
 
-WHO runs steps 3–7 depends on the sprint-doc `Nesting:` header (set once by the nesting probe — see SKILL Capability Probes):
+The sprint's manual branch and worktree remain authoritative. Runtime task isolation does not replace them.
 
-- **`Nesting: yes` (nested):** the conductor dispatches **one `sprint:stage-runner` subagent** that runs all of §3–§7 and dispatches the executor (§4) and review (§5) as **nested** subagents. The stage-runner carries the **`Agent` tool** and has **no `model`** (inherits the main/session model, so an unpinned §5 review inherits it too; a `Review:` pin travels as a conductor input the stage-runner sets on the §5 dispatch). The conductor sees only its terse report.
-- **`Nesting: no` (flat):** subagents can't dispatch subagents (e.g. Claude Desktop withholds `Agent` from subagents), so the **conductor** drives the stage, dispatching each isolated step itself (all `main → subagent`, one level): §3 isolate = conductor `git` plumbing; §4 execute = dispatch the executor subagent (mimo → `mimo-code:mimo-delegate` sonnet; native → `sprint:stage-executor` at the conductor-ASKed model); §5 review = dispatch a `general-purpose` review subagent (model per §5: `Review:` pin / native floor → set it, else no override → inherits main); §6 verify = dispatch a verify subagent; §7 land = conductor `git` plumbing. The conductor reads only terse reports — never diffs/logs, never the executor's output.
+## 0. Resolved stage contract
 
-**Nested dispatch template (conductor → stage-runner, `Nesting: yes`, one per stage).** Every input below is a value the conductor **already resolved** (pre-dispatch ASKs, probes, minted handle, the sprint-doc headers) — the stage-runner resolves nothing:
+Before dispatch, the conductor supplies all values below. A runner or child agent must not resolve models, ask the user, or infer omitted pinned state.
+
+```text
+runtime: <claude|omp>
+engine: <codex|mimo|native|bare>
+sprint: <sprint slug>
+stage: <NN>-<stage slug>
+title: <stage title>
+plan: docs/plans/<NN>-<stage>-plan.md
+repo: <absolute repository root>
+worktree: <absolute repository root>/.worktrees/<NN>-<stage>
+review-effort: <high|xhigh|max>
+review-model: <exact effective model>
+sdd: <available|unavailable>
+# mimo:  model: <provider/model>  variant: <variant>  handle: <bare handle>
+# native: model: <exact persisted model>
+# codex: effort: <high|xhigh>
 ```
-Agent(
-  subagent_type: "sprint:stage-runner",
-  # NO model field — the stage-runner inherits the main/session model
-  description: "stage $S",
-  prompt: """
-  engine: <codex|mimo|native|bare>     # sprint-doc Engine: header
-  sprint: <sprint>   S: <NN>-<stage>   title: <stage title>
-  plan: docs/plans/$S-plan.md
-  review-effort: <high|xhigh|max>      # Effort Scaling, by stage risk
-  review-model: <model>                # ONLY when the header has `Review: <model> (pinned)`; omit the line otherwise
-  sdd: <available|unavailable>         # conductor's two-gate call (§4c) — forward verbatim
-  # engine=mimo:   model: <provider/model>   variant: <v>   handle: <bare handle from mimo:<handle>>
-  # engine=native: model: <Claude model from the stage line's model:<model>>
-  # engine=codex:  effort: <high|xhigh>      (Effort Scaling; no model input)
-  Run stage $S per mechanics §3–§7; return only `landed @<sha>` (+ files count) or `blocked: <reason>`.
-  """)
-```
 
-In both modes: stage code lives only on `$BR` in `$WT`, the review runs at the **conductor-resolved review model** (`Review:` header pin, else the main/session model; native executor floor — §5), the mimo executor is **sonnet**, and the native executor runs at the **conductor-ASKed model**.
+With `Nesting: yes`, main sends one complete contract to the runtime's stage-runner. The runner performs §§3–7 and returns only `landed @<sha>` with a file count or `blocked: <reason>`. With `Nesting: no`, the conductor performs the same sequence and uses the adapter's flat dispatches. In either mode, the conductor never receives diffs, logs, launcher output, or review details.
 
-Slugs: `<sprint>` = milestone slug (e.g. `auth`); `<stage>` = stage slug (e.g. `schema`). Let `S=<NN>-<stage>`, `WT=.worktrees/$S`, `BR=feat/<sprint>-$S`. The **stage** branch `$BR` (e.g. `feat/auth-01-schema`) is distinct from the **integration** branch `feat/<sprint>` (e.g. `feat/auth`). Run everything from the **repo root**; never `cd` into `$WT` unscoped — worktree-scoped commands use `git -C "$WT"` or a `(cd "$WT" && …)` subshell, and the land commands (§7) use `git -C "$REPO"` so they always act on the main tree, never the worktree.
+Let `S=<NN>-<stage>`, `WT=.worktrees/$S`, and `BR=feat/<sprint>-$S`. The integration branch is `feat/<sprint>`.
 
 ## 3. Isolate
 
-Capture the repo root now (cwd is root here), so §7 can act on the main tree regardless of later cwd:
-```
+Capture the repository root and create the stage branch from the integration branch:
+
+```sh
 REPO=$(git rev-parse --show-toplevel)
-git worktree add -b "$BR" "$WT" feat/<sprint> || { echo "blocked: cannot isolate stage $S (worktree add failed)"; exit 1; }
+git worktree add -b "$BR" "$WT" "feat/<sprint>" || { echo "blocked: cannot isolate stage $S"; exit 1; }
 ```
-**Mandatory, no fallback.** If this fails — integration branch `feat/<sprint>` missing (sprint never started), a dirty main tree, branch `$BR` already exists — **report `blocked` and stop.** Never proceed by editing/committing stage code in the main tree: the entire stage runs inside `$WT` on `$BR`, and stage code reaches the integration branch only via the §7 merge.
+
+Failure is blocking. Do not fall back to the main checkout. All stage edits, review fixes, verification, and the stage commit occur in `$WT` on `$BR`.
 
 ## 4. Execute
 
-Read the engine from the sprint-doc `Engine:` header and dispatch the matching variant below. For `Engine: mimo`, the model, variant, and `mimo:<handle>` are **inputs the conductor already resolved** (pre-dispatch: it ran `mimo-resolve`, picked model+variant, minted the per-stage handle `<stage>-<rand4>`, and recorded `mimo:<handle>` on the stage line) and passes to the stage-runner — the stage-runner does **not** resolve them here. For `Engine: native`, the executor **model** is likewise a conductor-resolved input (pre-dispatch: it ASKed the user, scaled to risk, and recorded `model:<model>` on the stage line) — the dispatcher passes it via the Agent `model` param, it does not pick it here.
+Dispatch through the active runtime adapter. The child receives an absolute worktree path and the resolved engine inputs.
 
-### 4a. Engine: codex
+### 4a. Codex
 
-**Fresh run.** The codex runtime is the `task` helper that `codex:rescue` wraps; call it directly so you can target the worktree with `--cwd`:
-```
+Find and invoke the companion runtime directly so `--cwd` targets the worktree:
+
+```sh
 CODEX=$(fd -t f codex-companion.mjs ~/.claude/plugins/marketplaces/openai-codex 2>/dev/null | head -1)
 node "$CODEX" task "Implement this plan fully and exactly:
-$(cat docs/plans/$S-plan.md)
-[+ 'Use subagent-driven-development.' only if the codex-SDD probe found it]" \
+$(cat docs/plans/$S-plan.md)" \
   --cwd "$WT" --write --effort <high|xhigh>
 ```
-`--write` → codex runs `workspace-write` (edits files); without it, read-only. The companion already drives codex with `approval = never` + `sandbox = workspace-write` (NOT `--dangerously-bypass-approvals-and-sandbox`): it edits freely in the worktree, never blocks on approval, and is OS-confined to the worktree (+`$TMPDIR`/`/tmp`) — no flag change needed. Network is off inside the sandbox, so a codex-run build may fail; fine here, since §6 verify runs separately. For a long stage, add `--background` and poll `node "$CODEX" status` / `node "$CODEX" result`; cap the polling (e.g. abort after N checks). If the session stalls, gets stuck, or stops with the plan unfinished, **resume it (below) before reporting `blocked`.**
 
-**Resume a stuck or stopped session.** codex stopping mid-plan — interrupted, timed out, partial edits, dead `--background` job — is recoverable. **Resume the same thread** so codex keeps its own context, instead of a fresh `task` that re-derives everything and may clobber the partial edits. This is exactly what `codex:rescue --resume` wraps; call the runtime directly to target the worktree:
-```
-node "$CODEX" status --all --json            # find the job + whether it stopped
-node "$CODEX" result <job-id> --json         # background job: stop reason / output
+Append `Use subagent-driven-development.` only when `sdd: available`. The companion's workspace-write sandbox is sufficient; do not bypass its sandbox. A network-dependent build may fail there because §6 performs independent verification.
+
+For a long stage, background execution may be polled with a finite cap. If a thread stops unfinished, inspect its status and resume the same thread:
+
+```sh
+node "$CODEX" status --all --json
+node "$CODEX" result <job-id> --json
 node "$CODEX" task --resume-last --write --cwd "$WT" --effort <high|xhigh> \
-  "Your previous run stopped before finishing. Re-read the plan and the current
-   worktree state, do only what remains, and complete it fully and exactly:
-$(cat docs/plans/$S-plan.md)"
-```
-`--resume-last` (what `codex:rescue --resume` adds) continues the **last** codex thread — sprints run one stage's codex at a time, so "last" is this stage's. Keep the partial worktree (uncommitted); never commit or land a partial stage. Cap resumes too: after ~2 that still leave the plan unfinished, report `blocked: codex stalled, <N>/<total> files, worktree retained`.
-
-### 4b. Engine: mimo
-
-The stage-runner dispatches `mimo-code:mimo-delegate` as a **nested subagent**, **foreground** (the stage-runner blocks until it returns — never a harness background flag, which would bounce monitoring up to the conductor). This works because the stage-runner is `sprint:stage-runner`, which carries the `Agent` tool. mimo-delegate runs ONE mimo session via the launcher and reads its inputs (`handle`, `cwd`, `model`/`variant`, `prompt`, `mode`) from the **free-text prompt body**, so put them there. It writes files directly into `$WT`; the stage-runner does **not** edit files itself in this variant. mimo-delegate returns `done` only when mimo stopped **and** the worktree diff is non-empty — an empty diff (mimo stopped mid-plan) comes back `incomplete`, so resume it; do not treat empty as done.
-
-`handle` is the bare `<handle>` from the `mimo:<handle>` token on the stage line — **drop the `mimo:` prefix** (mimo-delegate wants `<handle>` matching `[a-z0-9_-]+`, form `<stage>-<rand4>`). `cwd` must be **absolute**: mimo-delegate runs detached and hard-requires it, and `$WT` is the *relative* `.worktrees/$S`, so pass `"$REPO/$WT"` (`$REPO` was captured absolute in §3).
-
-**Fresh run.**
-```
-Agent(
-  subagent_type: "mimo-code:mimo-delegate",
-  description: "execute $S",
-  prompt: """
-  mode: fresh
-  handle: <handle>          # bare handle from mimo:<handle> on the stage line
-  cwd: "$REPO/$WT"          # absolute
-  model: <model from conductor>
-  variant: <variant from conductor>
-  [+ "Use your subagent-driven-development skill (e.g. compose:subagent) to execute this plan — a fresh subagent per task." only if the mimo-SDD probe found it]
-  Implement this plan fully and exactly:
-  $(cat docs/plans/$S-plan.md)
-  """)
-```
-The SDD line is conditional on the conductor's mimo-SDD probe (SKILL Capability Probes): mimo ships `compose:subagent` and runs its own subagents, so when the probe finds it, the plan is executed task-by-task; absent (e.g. `--pure`), drop the line and mimo implements the plan directly.
-
-**Resume a stuck or stopped session.** If the stage stopped/unfinished, re-dispatch with the **same handle** and `mode: resume`. **CRITICAL: on resume do NOT pass `model` or `variant`** — mimo-delegate resumes by the session id recorded against the handle and takes neither. Never start a fresh session to "resume". mimo retains the plan and worktree context through that recorded session, so the continuation prompt need only say "finish what remains" — unlike codex, re-feeding the full plan is unnecessary:
-```
-Agent(
-  subagent_type: "mimo-code:mimo-delegate",
-  description: "resume $S",
-  prompt: """
-  mode: resume
-  handle: <handle>          # same bare handle as the fresh run
-  cwd: "$REPO/$WT"          # absolute
-  Your previous run stopped before finishing; re-read the plan and the current
-  worktree state, do only what remains, and complete it fully.
-  """)
-```
-Cap resumes like codex: after ~2 that still leave the plan unfinished, report `blocked: mimo stalled, <N>/<total>, worktree retained`.
-
-### 4c. Engine: native
-
-The executor is `sprint:stage-executor` — a native Claude subagent dispatched by the stage-runner (nested) or the conductor (flat), **foreground** (the dispatcher blocks until it returns), into the worktree. The **model is an input the conductor already resolved** (pre-dispatch: it ASKed the user, scaling the offered default to stage risk — risky→`opus`, low/normal→`sonnet`) and the dispatcher passes via the Agent `model` param — it is **not** chosen here. The executor writes files directly into `$WT`; the dispatcher does **not** edit files in this variant. `done` requires a **non-empty** `git -C "$REPO/$WT" status --porcelain`; an empty diff is **incomplete → resume** (native often stops mid-plan having written nothing). **SDD (two gates — capability AND suitability):** the dispatcher passes `sdd: available` only when **both** hold: (1) the conductor's native-SDD probe found `superpowers:subagent-driven-development`, **and** (2) the conductor judges this stage's tasks **independent** — distinct files/areas, no shared mutable state, no sequential red→green TDD coupling — i.e. work SDD can fan out across fresh per-task subagents without merge hazards or broken test ordering. A stage that is surgical edits to **one** file, or a strict sequential-TDD chain, or shares state across steps → pass `sdd: unavailable` **even though the skill exists** (the conductor knows the task shape from the plan it wrote — this is a per-stage call, not the once-per-sprint capability probe). When `available`, the executor uses SDD **only if it actually holds the `Agent` tool** (the runtime may withhold `Agent` at this nesting depth — on `Nesting: no` it always does), otherwise it implements directly; it does **not** re-judge suitability (gate 2 was the conductor's call — don't rationalize direct on "coupling" grounds when told `available`). SDD applies to **fresh** runs only; a `resume` always completes the partial diff directly. The same suitability gate governs the mimo/codex SDD prompt-line (§4a/§4b): omit it on coupled/single-file stages.
-
-**Fresh run.**
-```
-Agent(
-  subagent_type: "sprint:stage-executor",
-  model: <model from conductor>,   # the ASKed model; risky→opus
-  description: "execute $S",
-  prompt: """
-  mode: fresh
-  cwd: "$REPO/$WT"          # absolute; first action: cd into it
-  sdd: <available|unavailable>   # available = skill present AND conductor judged tasks independent. If available AND you hold the Agent tool → use superpowers:subagent-driven-development (fresh subagent per task), don't re-judge suitability; else implement directly
-  Implement this plan fully and exactly:
-  $(cat docs/plans/$S-plan.md)
-  """)
+  "Your previous run stopped before finishing. Re-read the plan and worktree; complete only what remains."
 ```
 
-**Resume a stuck or stopped session.** Native has **no session id** — the worktree IS the state, so "resume" is just a fresh dispatch that reads the partial diff. Re-dispatch with `mode: resume`, the **same `cwd`**, and **the same model** (reuse the stage line's recorded `model:<model>`); the executor reads the plan + current worktree diff and does only what remains. Re-feeding the full plan is harmless but unnecessary — point it at the plan path. Keep the partial worktree (uncommitted); never commit or land a partial stage:
+Never start a fresh codex thread over partial work. After about two unsuccessful resumes, return `blocked: codex stalled, worktree retained`.
+
+### 4b. Mimo
+
+The runtime adapter dispatches the mimo delegate in the foreground. The delegate, not the runner or conductor, operates the launcher. Pass the **bare** handle without the `mimo:` stage-row prefix.
+
+Fresh prompt:
+
+```text
+mode: fresh
+handle: <bare handle>
+cwd: <absolute worktree>
+model: <exact resolved provider/model>
+variant: <exact resolved variant>
+sdd: <available|unavailable>
+Implement docs/plans/$S-plan.md fully and exactly.
 ```
-Agent(
-  subagent_type: "sprint:stage-executor",
-  model: <same model>,
-  description: "resume $S",
-  prompt: """
-  mode: resume
-  cwd: "$REPO/$WT"          # absolute
-  Your previous run stopped before finishing; re-read the plan and the current
-  worktree diff, do only what remains, and complete it fully.
-  """)
+
+When `sdd: available`, explicitly ask mimo to use its subagent skill with one fresh subagent per independent task. Otherwise it implements directly.
+
+An incomplete run resumes through the same delegate and handle:
+
+```text
+mode: resume
+handle: <same bare handle>
+cwd: <same absolute worktree>
+Your previous run stopped before finishing. Re-read the plan and worktree; complete only what remains.
 ```
-Cap resumes like the others: after ~2 that still leave the plan unfinished, report `blocked: native stalled, <N>/<total>, worktree retained`.
 
-### 4d. Engine: bare
+On resume, do **not** pass model or variant. Never mint a replacement handle. After about two unsuccessful resumes, return blocked and retain the worktree.
 
-When **no executor subagent can be dispatched at all** (truly degenerate — neither codex/mimo nor a native `stage-executor` is reachable), the stage-runner implements `docs/plans/$S-plan.md` **itself**, in `$WT` (no further subagent — it *is* the executor). Prefer `native` (§4c) whenever a subagent CAN be dispatched: it keeps the orchestrator's context lean and lets the model scale per stage, which inline `bare` cannot.
+### 4c. Native
 
-## 5. Review
+The adapter dispatches the named stage executor at the conductor-resolved model. It must pass that model explicitly when its runtime does not provide the required inheritance semantics.
 
-**In a separate subagent — mandatory.** The review is dispatched as a `general-purpose` subagent — by the **stage-runner** in nested mode, by the **conductor** in flat mode (§0). It does **not** run inline or as a `claude -p` subprocess: the review reads diffs and rewrites files, so it must stay isolated from the dispatcher's context. The review works on the **uncommitted** working-tree diff (the executor's output), so it runs *before* the commit in §7.
+Fresh prompt:
 
-**Which reviewer:** the **vendored `code-review` skill** (built into the runtime, invoked via the **Skill tool**, accepts `<effort> --fix` and applies fixes to the working tree). Do **NOT** `fd`/search the disk for a `code-review` command — that finds the `claude-plugins-official` **PR** plugin, which reviews a GitHub PR (`gh pr comment`) and spawns its own sub-agents (wrong tool, and it can't even run inside a subagent on a no-nesting runtime). Use effort `high|xhigh|max` only — **never `ultra`** (the one multi-agent/cloud variant).
-
-**Model:** the review model is a **conductor-resolved input** — the dispatcher never picks it here. `Review: <model> (pinned)` in the sprint-doc header (the user's explicit pick) → dispatch with `model: <that model>`. No `Review:` header → dispatch with **NO `model` override** so it inherits the dispatcher's model — which is the **main/session model** (in nested mode the stage-runner itself has no model; in flat mode the conductor dispatches it directly). **Executor floor (hard, `Engine: native` only):** if the native executor ran a Claude model *stronger* than the resolved review model (e.g. `opus` executor on a `sonnet` session with no pin — or over a weaker `Review:` pin), set `model: <executor model>` so the gate is never weaker than the code it reviews. Never *downgrade* below the resolved model — not for cost, not for a "trivial" stage.
-
-`$WT` is a real on-disk git worktree, so the subagent just makes it the cwd and the diff it sees is the executor's uncommitted output. Exact tool call (substitute `$S`, the `$WT` absolute path, and the effort):
+```text
+runtime: <claude|omp>
+executor-model: <exact persisted model>
+mode: fresh
+cwd: <absolute worktree>
+sdd: <available|unavailable>
+plan: docs/plans/$S-plan.md
+Implement the plan fully and exactly.
 ```
-Agent(
-  subagent_type: "general-purpose",
-  # model: <conductor-resolved review model> ONLY when Review: is pinned / native executor floor;
-  # else NO model field → inherits the dispatcher's model = the main/session model
-  mode: "acceptEdits",        # → "bypassPermissions" only if a *command* prompt stalls it; safe, worktree is disposable
-  description: "review $S",
-  prompt: """
-Your working directory is the worktree <abs $WT> — first action: cd into it, run everything there.
-Invoke the VENDORED `code-review` skill via the Skill tool with args: <high|xhigh|max> --fix
-(NOT a GitHub-PR /code-review plugin, NOT `ultra`) so it reviews AND applies fixes to the
-uncommitted working-tree diff in this worktree.
-Work autonomously: apply every fix, never ask for approval, do NOT commit.
-Return only `clean`, or a terse bullet list of items you could not resolve. No diffs, no narration.
-""")
+
+If SDD is available and the executor can spawn, it follows the runtime's SDD skill. It does not re-judge suitability. Otherwise it implements directly.
+
+`done` requires a non-empty worktree diff and completion of the plan. Resume an incomplete run with the same model and worktree:
+
+```text
+runtime: <claude|omp>
+executor-model: <same exact persisted model>
+mode: resume
+cwd: <same absolute worktree>
+plan: docs/plans/$S-plan.md
+Re-read the plan and current worktree diff; complete only what remains.
 ```
-On unresolved items, loop back to step 4. Effort is `high`/`xhigh`/`max` by stage risk (table below), capped at `max`; `ultra` is a cloud multi-agent review the operator triggers manually, never the stage-runner.
+
+Native has no separate session handle; the worktree is its persistent state. After about two unsuccessful resumes, return blocked and retain it.
+
+### 4d. Bare
+
+Bare is a last resort only when no named executor is reachable. The stage-runner implements the plan inside the worktree. Prefer native whenever dispatch is possible because native preserves context isolation and explicit model control.
+
+## 5. Review gate
+
+Review the executor's uncommitted worktree diff before committing. The adapter dispatches the dedicated sprint reviewer at the exact effective review model. Review never runs inline in main or the stage-runner, through a headless CLI shortcut, or through a GitHub PR review workflow.
+
+The reviewer:
+
+1. Fans out independent correctness, security, and test-quality specialists in parallel when those areas apply.
+2. Requires every finding to cite concrete worktree evidence.
+3. Deduplicates supported findings and neither invents nor increases severity without evidence.
+4. Dispatches a fixer for supported findings. The fixer changes only the stage worktree and does not commit.
+5. Sends affected areas and applied fixes to the relevant specialists for focused re-review.
+6. Repeats fix and focused re-review at most two times.
+7. Returns `clean` only with no supported unresolved findings. At the retry cap, returns `blocked` with terse unresolved evidence; the stage must not land.
+
+Use `high`, `xhigh`, or `max` review effort from the risk table. Do not use `ultra`. A report-only review cannot pass the gate: fixes require focused re-review.
 
 ## 6. Verify
 
-Run the repo's test/build in a subshell so cwd doesn't leak:
-```
-(cd "$WT" && nix flake check)     # or: cargo test / npm test
-```
-On failure, loop back to step 4 with the failures.
+Run the repository's actual focused test/build command inside the worktree:
 
-## 7. Commit, then land
-
-Codex and `/code-review --fix` leave changes **uncommitted** in the worktree. Commit only if steps 5–6 succeeded — otherwise the merge brings nothing and `git worktree remove` refuses a dirty tree:
+```sh
+(cd "$WT" && nix flake check)     # or the repository's cargo/npm test command
 ```
+
+On failure, return to execution with the exact failure evidence, then review affected fixes and verify again. Do not land red work.
+
+## 7. Commit and land
+
+Only after clean review and successful verification:
+
+```sh
 git -C "$WT" add -A
 git -C "$WT" commit -m "feat(<sprint>): stage <NN> <title>"
 git -C "$REPO" merge --no-ff "$BR"
 git -C "$REPO" worktree remove "$WT" && git -C "$REPO" branch -d "$BR"
 ```
-`$REPO` is already on `feat/<sprint>` (the conductor never left it), so no `git switch` is needed — the merge always lands on the integration branch in the main tree, never in the worktree.
 
-## Investigation (spike) — on-demand, NOT a stage
+The main checkout remains on `feat/<sprint>`. The conductor records the merge SHA in the sprint document. Never remove a dirty or blocked worktree.
 
-Mid-discussion (steps 1–2) or mid-sprint, the user sometimes raises something that needs **noisy
-investigation** — debugging, a repro, browser clicks, reading verbose logs. The conductor must **not**
-do it inline (console/network/screenshots/log dumps would pollute the lean discussion thread). Instead
-it dispatches `sprint:investigator` **foreground** (blocks on it) and reads back only a distilled
-finding. This is interleaved and one-off — no worktree of its own, no branch, no merge, never a stage row.
+## Investigation spike
 
-```
-Agent(
-  subagent_type: "sprint:investigator",
-  description: "investigate <question>",
-  # no model override → inherits the conductor's model (debugging wants the strong model)
-  prompt: """
-  question: <what to find out / diagnose>
-  cwd: <$REPO  |  $REPO/$WT when a LIVE stage is the subject>   # cd here; investigate here
-  context: <1–3 lines: the symptom, suspected area, a URL>
-  worktree: <none  |  "$WT is a LIVE stage — read/run only, never edit it">
-  Persist docs/investigations/<slug>.md if the finding is substantial; else return terse.
-  """)
-```
+Noisy investigation is not a stage. Dispatch the runtime's named sprint investigator in the foreground with a question, absolute cwd, short context, and whether a live stage worktree is read-only. It may persist a substantial finding under `docs/investigations/`; otherwise it returns only `finding`, `evidence`, `recommendation`, or `blocked`.
 
-The conductor reads only the investigator's `finding:` / `evidence:` / `recommendation:` (or
-`blocked:`), folds what matters into the sprint doc's Decisions/Open-questions, and continues. It
-**never** streams the investigator's logs/screenshots/diffs into its own context. Browser work needs the
-claude-in-chrome extension connected; if it's down the investigator returns `blocked: connect the
-extension` with partial signal — don't scope a stage off unconfirmed signal. **Delegate vs inline:** a
-single `rg`/one-liner the conductor still runs itself; multi-step work, anything that produces a wall of
-output, or any browser interaction → dispatch the investigator. See `agents/investigator.md` for its
-full contract (distilled return, the read/throwaway worktree rule, findings persistence).
+The conductor may perform a single narrow lookup itself. Multi-step debugging, browser work, reproduction, or verbose logs belong to the investigator. It never edits a live stage worktree.
 
-## Effort Scaling
+## Effort scaling
 
-| Stage risk | codex effort (step 4) | mimo variant (step 4) | native model (step 4) | review effort (step 5) |
+| Stage risk | codex effort | mimo variant | native recommended model class | review effort |
 |---|---|---|---|---|
-| low / cosmetic | high | medium | sonnet | high |
-| normal | xhigh | high | sonnet | xhigh |
-| risky / wide blast radius | xhigh | max | opus | max |
+| low / cosmetic | high | medium | standard | high |
+| normal | xhigh | high | standard | xhigh |
+| risky / wide blast radius | xhigh | max | strongest | max |
 
-The `codex effort` and `mimo variant` columns are **separate vocabularies** — codex `--effort` is `high`/`xhigh`/`max`; mimo `--variant` is `minimal`/`low`/`medium`/`high`/`max` (it has **no `xhigh`**), so the two columns differ on purpose. codex maps its column to `--effort`; mimo maps its column to `--variant` — the **risk-scaled** value here is the one the conductor marks *Recommended* in the per-stage variant ASK (≤4 menu: `default` + the risk-scaled variant — always in the menu — + neighbours; the rest via Other), not an auto-pick. native maps to the executor **model** (the conductor offers the risk-scaled model in its per-stage ASK — the user picks). The `native model` column is likewise the **recommended default** in that ASK. The `review effort` column scales the review's *effort* only; the review's **model** is orthogonal — the `Review:` header pin when the user set one, else inherit main (§5). `ultra` review is intentionally absent from the auto-flow — escalate to it manually when a stage warrants a cloud review.
+Codex effort and mimo variant are separate vocabularies. Codex uses `high|xhigh`; mimo uses `minimal|low|medium|high|max` and has no `xhigh`. For mimo, ASK with `default`, the table's risk-scaled value (always visible and Recommended), and nearest neighbors up to the runtime's four-option limit. For native, map `standard` and `strongest` to exact models from the runtime catalog, ASK, persist the exact result, and pass it verbatim.

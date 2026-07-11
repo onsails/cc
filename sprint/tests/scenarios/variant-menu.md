@@ -57,3 +57,6 @@ a real question from you.
   override needed.
 - 2026-07-02 · post mechanics Effort-Scaling wording alignment (opus) · **PASS** — same
   menu; SKILL.md and mechanics.md no longer disagree.
+- 2026-07-11 · post runtime-portability changes (GPT-5.6) · **PASS** — one
+  four-option variant question offered `medium (Recommended)`, `default`, `low`,
+  and `high`; it neither hid the risk-scaled choice in Other nor auto-selected it.

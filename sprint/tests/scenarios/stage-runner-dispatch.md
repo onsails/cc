@@ -3,8 +3,8 @@
 **Guards:** the nested dispatch template (mechanics.md §0) and its input contract
 (agents/stage-runner.md → Inputs). The conductor must pass EVERY resolved input —
 engine, stage, plan path, review effort, mimo model/variant/bare handle, `sdd`, and
-the pinned review model — on one `sprint:stage-runner` dispatch with **no model
-param**. Before the template existed, the contract lived only in the stage-runner's
+the pinned review model — on one `sprint:sprint-stage-runner` dispatch with **no
+model param**. Before the template existed, the contract lived only in the stage-runner's
 own system prompt, which the conductor never reads.
 
 ## Prompt
@@ -46,7 +46,7 @@ commentary. Do not modify any files. CRITICAL: write the composed call as plain 
 
 ## Expected
 
-- `subagent_type: "sprint:stage-runner"` — one dispatch for the whole stage.
+- `subagent_type: "sprint:sprint-stage-runner"` — one dispatch for the whole stage.
 - **No `model` param** on the dispatch (the stage-runner inherits the main model).
 - The prompt body carries ALL of: engine `mimo`; the stage id `02-api` (and/or plan
   path `docs/plans/02-api-plan.md`); review effort `xhigh` (normal risk); model
@@ -76,3 +76,6 @@ commentary. Do not modify any files. CRITICAL: write the composed call as plain 
   no `model` field, engine/sprint/S/title, plan path, `review-effort: xhigh`,
   `review-model: opus`, `sdd: available`, `model`+`variant`+bare `handle: api-7f3a`.
   Far terser than the baseline's hand-assembled version — canonicalization worked.
+- 2026-07-11 · post clean-cutover naming (GPT-5.6) · **PASS** — dispatched one
+  `sprint:sprint-stage-runner` with no outer `model`, and carried the complete
+  resolved mimo, review, SDD, plan, repository, and worktree contract in its prompt.
