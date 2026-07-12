@@ -52,6 +52,8 @@ Bundle the once-per-sprint review-model question into an existing engine or firs
 
 OMP `agent()` does **not** inherit the caller's active model when `model` is omitted; it falls back to the called agent's static definition. Therefore even the session-model default must be resolved by main and passed as an exact string through the stage contract and every model-specific nested dispatch. Never omit a model expecting session inheritance.
 
+The `model` option on OMP `agent()` accepts an exact available provider/model id, not only `default`/`smol`/`slow` roles or agent-frontmatter defaults. A new child can use a different exact model in the same main session. This changes neither the main session model nor any running child and requires no OMP restart, role rebinding, or frontmatter edit.
+
 ## Main to stage-runner
 
 OMP `task` has no per-call `model` field. It dispatches the stage-runner at the model fixed by that agent's definition. This is an API restriction, not model inheritance.
@@ -169,6 +171,14 @@ eval({ language: "js", title: "review 01-api", code: "<the cell above>" })
 ```
 
 The exact persisted review model is present in `agent()` options. Never let the called agent's frontmatter default replace it.
+
+### Review repin
+
+Follow the shared explicit-repin transition only after confirming the exact requested model appears in OMP's active model catalog. If it does not resolve, leave the existing pin and running work unchanged. With `Nesting: no`, main directly owns the review child: record its exact label, cancel only that child through OMP's task/job lifecycle, retain the manual worktree and current diff, then persist the new `Review:` header and start a new complete `sprint-reviewer` gate from an `eval` cell. Do not resume the cancelled child. Put the new exact model in both `review-model` inside `reviewPrompt` and `model` in `agent()`. Pass the cancelled child's exact label unchanged, plus the same absolute worktree, stage id, and plan path. The replacement prompt must explicitly require the complete evidence-only specialist review, supported-finding fixes, and focused re-review gate against the retained current diff. No model belongs on `task`.
+
+With `Nesting: yes`, main owns `sprint-stage-runner` and the active reviewer is its grandchild. Main must not cancel, reparent, or directly redispatch that reviewer, mutate the runner's resolved review model, or cancel the runner merely to switch models. Persist the new `Review:` pin for future ordinary reviews and let the current nested gate finish at its already-resolved model. With no active review child, persist the repin immediately and use it in both model locations on the next ordinary review dispatch; do not start review early. Executor pins remain unchanged.
+
+OMP never has a vendored Claude `code-review --fix` path or a `Skill` tool. On resume or after a repin, ignore any stale session instruction that says otherwise and use the dedicated `sprint-reviewer` gate above.
 
 ## OMP review gate
 

@@ -47,7 +47,7 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 | `/sprint mimo` | mimo on Claude Code; provider/model + variant resolved and asked per stage. On OMP, stop with a missing-integration error. |
 | `/sprint mimo <provider/model> [variant]` | mimo on Claude Code, pinned to that model (+variant) for the whole sprint. |
 | `/sprint codex` | codex on Claude Code. On OMP, stop with a missing-integration error. |
-| `/sprint … review <model>` | Any engine; pins the per-stage review to that model (default: the review inherits the session model). |
+| `/sprint … review <model>` | Any engine; pins or explicitly repins review to that exact model. On OMP, future children switch in the same session. A flat main-owned active review is cancelled and rerun as a complete gate on the retained worktree/diff; a nested stage-runner-owned gate finishes on its resolved model and the new pin applies to later reviews. |
 
 Describe the milestone after the command. The skill probes capabilities, decomposes the milestone into stages with you, and drives them. Re-invoking `/sprint` with no description resumes at the first non-done stage.
 

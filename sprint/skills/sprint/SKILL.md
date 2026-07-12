@@ -105,6 +105,14 @@ If no review decision has been made, append a review-model question to an ASK ro
 
 All dynamic model decisions occur in the conductor. Child agents receive resolved values and never ASK, inherit silently, reinterpret, or downgrade them.
 
+### Explicit repin during a sprint
+
+An explicit user instruction to change `review <model>` on an existing sprint is a repin, not a refresh from defaults. Before changing state or cancelling work, use the active runtime adapter to verify that the exact requested id is available. If it is unavailable, leave the current pin and children unchanged and stop. Otherwise replace only the `Review:` header with the exact requested id and persist it immediately. The new pin applies to every review dispatch that has not started; it does not change the engine, executor pin, or a stage-row executor model. Only an explicit user repin may replace a persisted pin. The native review floor still applies to the effective dispatch without rewriting the requested pin.
+
+An already-running child cannot change model in place. Move the **current active review** only when the runtime adapter says that review is directly owned and cancellable by the conductor: cancel only that review child, wait for cancellation, retain the authoritative stage worktree and current uncommitted diff, keep the stage in `review`, persist the new `Review:` pin, then dispatch a fresh **complete** review gate on the same worktree with the new exact model. If the reviewer is nested under another orchestrator or the conductor is blocked while it runs, do not cancel, reparent, or redispatch it; persist the new pin for later reviews and let the current gate finish at its already-resolved model. Do not resume an old opaque child context, reuse an incomplete result, rerun execution, restart the conductor/runtime, or rebind a role. If no review child is active, persist the pin now and use it on the next review; do not dispatch review early.
+
+An executor repin is different: it applies only before a fresh executor dispatch. An active or resumable native executor keeps its recorded model through completion; never change its model mid-run.
+
 ## Sprint document
 
 The source of truth is `docs/plans/<sprint>-sprint.md`:
@@ -126,7 +134,7 @@ Legend: todo · brainstorming · planned · executing · review · blocked · do
 ## Open questions
 ```
 
-Persist `Runtime`, engine, nesting, explicit pins, stage model/variant/handle, status, and merge result immediately when resolved. On resume, read this document first and load its runtime adapter. Never replace persisted explicit choices with current defaults.
+Persist `Runtime`, engine, nesting, explicit pins, stage model/variant/handle, status, and merge result immediately when resolved. On resume, read this document first and load its runtime adapter. Never replace persisted explicit choices with current defaults; replace a pin only when the user explicitly repins it.
 
 Resume the first non-done stage at its recorded state. Preserve its worktree and engine state. If all stages are done, report completion and stop. If no document exists, create the integration branch, remain on it, and start decomposition.
 
@@ -160,4 +168,4 @@ Review is mandatory, separate from the conductor, evidence-based, fix-capable, a
 
 Stop and return `blocked` when isolation fails, a required named agent is unavailable, explicit model dispatch cannot be honored, review remains unresolved at its retry cap, verification remains red, or an executor remains incomplete after capped resumes. Retain the worktree and persisted state.
 
-Stop immediately before any action that would read a full diff into main, run implementation or review inline in main, put a model on a runtime API that does not support it, replace an explicit model, start a fresh executor over resumable partial work, or land before review and verification are clean.
+Stop immediately before any action that would read a full diff into main, run implementation or review inline in main, put a model on a runtime API that does not support it, replace an explicit model without an explicit user repin, start a fresh executor over resumable partial work, or land before review and verification are clean.

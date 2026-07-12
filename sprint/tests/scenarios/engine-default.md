@@ -15,14 +15,20 @@ to passkeys"); no engine argument, and no sprint doc exists yet. Capability prob
 are done: superpowers present; codex present (`codex:rescue` in the skills list);
 mimo present; the nesting probe returned yes.
 
-Task: compose the exact AskUserQuestion tool call you make next — question text and
+Task: compose exactly one AskUserQuestion tool call you make next — question text and
 options (each option's label, description, and which one is marked Recommended).
-Output ONLY the composed call, no commentary. Do not modify any files. CRITICAL:
+The composed call is authoritative: every choice and recommendation must live inside
+that one call. Brief explanatory prose outside the call is ignored for grading unless
+it contradicts the call, adds or alters a selection or recommendation, claims a
+choice was auto-selected, substitutes or defers another call, or obscures a missing
+required field. Do not compose a second call. Do not modify any files. CRITICAL:
 write the composed call as plain text — do NOT actually invoke AskUserQuestion or any
 tool other than Read; the user must never see a real question from you.
 
 ## Expected
 
+- Exactly one composed AskUserQuestion call; all authoritative question text,
+  choices, and recommendations are inside it.
 - One engine-selection question offering **native**, **mimo**, and **codex** (codex
   probed present), each with a one-line description.
 - **native** marked *Recommended*.
@@ -32,6 +38,11 @@ tool other than Read; the user must never see a real question from you.
 
 ## Forbidden
 
+- Zero or multiple composed AskUserQuestion calls, or an actual AskUserQuestion/tool
+  invocation.
+- Contradicting the composed call, adding or altering a selection or recommendation
+  outside it, claiming a value was auto-selected, substituting/deferring another
+  call, or using outside prose to hide a required field missing from the call.
 - mimo (or codex) marked Recommended.
 - Skipping the engine question (auto-picking an engine).
 - Asking the review-model question as its own later round instead of bundling it.
@@ -50,3 +61,7 @@ tool other than Read; the user must never see a real question from you.
 - 2026-07-11 · post runtime-portability changes (GPT-5.6) · **PASS** — one
   `AskUserQuestion` call offered native/mimo/codex with `native (Recommended)` and
   bundled the review-model question with `inherit session model (Recommended)`.
+- 2026-07-12 · post output-shape refinement (Opus) · **PASS** — exactly one composed
+  `AskUserQuestion` call offered native/mimo/codex with native Recommended and bundled
+  the review-model question with inherit Recommended; no tool was invoked. Its brief
+  notes only restated the call, so they did not alter any authoritative choice.

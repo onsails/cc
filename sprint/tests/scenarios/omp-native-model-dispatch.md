@@ -136,4 +136,10 @@ any agent; `read` is the only tool you may call.
   model-free `task` call containing every resolved stage input; then used separate
   `eval` cells for flat `sprint-stage-executor` and `sprint-reviewer`, each with the
   persisted exact model in both its prompt and `agent()` options.
+- 2026-07-12 · post-model repin skill changes (fresh OMP rerun) · **PASS** — set
+  `task.maxRecursionDepth = 3`; dispatched flat `sprint-stage-runner` with exact
+  task id `stage-01`, every resolved stage input, and no task `model` field; then
+  composed separate JavaScript `eval` cells for flat `sprint-stage-executor` at
+  `anthropic/claude-sonnet-4-6` and `sprint-reviewer` at
+  `anthropic/claude-opus-4-6`, preserving both pinned models verbatim.
 

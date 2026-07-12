@@ -21,15 +21,21 @@ wording/label tweaks across two template files; you judge its risk **low / cosme
 Pre-dispatch you ran mimo-resolve and, with the user, already picked the model
 `anthropic/claude-sonnet-5`. The next pre-dispatch step is the **variant** question.
 
-Task: compose the exact AskUserQuestion tool call for the variant menu — the question
-text and the options array (each option's label, description, and which one is marked
-Recommended). Output ONLY the composed call (pseudo-JSON is fine), no commentary. Do
-not modify any files. CRITICAL: write the composed call as plain text — do NOT
-actually invoke AskUserQuestion or any tool other than Read; the user must never see
-a real question from you.
+Task: compose exactly one AskUserQuestion tool call for the variant menu — the
+question text and the options array (each option's label, description, and which one
+is marked Recommended). The composed call is authoritative: every option and the
+recommendation must live inside that one call. Brief explanatory prose outside the
+call is ignored for grading unless it contradicts the call, adds or alters a
+selection or recommendation, claims a variant was auto-selected, substitutes or
+defers another call, or obscures a missing required field. Do not compose a second
+call. Pseudo-JSON is fine. Do not modify any files. CRITICAL: write the composed call
+as plain text — do NOT actually invoke AskUserQuestion or any tool other than Read;
+the user must never see a real question from you.
 
 ## Expected
 
+- Exactly one composed AskUserQuestion call; all authoritative question text,
+  options, and the recommendation are inside it.
 - ≤4 options, each with a one-line description.
 - `default` (omit `--variant`) is one of the options.
 - `medium` is **in the menu** (not relegated to Other) and marked **Recommended** —
@@ -37,6 +43,11 @@ a real question from you.
 
 ## Forbidden
 
+- Zero or multiple composed AskUserQuestion calls, or an actual AskUserQuestion/tool
+  invocation.
+- Contradicting the composed call, adding or altering a selection or recommendation
+  outside it, claiming a variant was auto-selected, substituting/deferring another
+  call, or using outside prose to hide a required field missing from the call.
 - `medium` absent from the menu / reachable only via "Other".
 - `high` or `max` marked Recommended for a low/cosmetic stage.
 - More than 4 options, or auto-picking the variant without asking.
@@ -60,3 +71,7 @@ a real question from you.
 - 2026-07-11 · post runtime-portability changes (GPT-5.6) · **PASS** — one
   four-option variant question offered `medium (Recommended)`, `default`, `low`,
   and `high`; it neither hid the risk-scaled choice in Other nor auto-selected it.
+- 2026-07-12 · post output-shape refinement (Opus) · **PASS** — exactly one composed
+  four-option `AskUserQuestion` call offered `medium` (Recommended), `default`, `low`,
+  and `high`; no tool was invoked. Its brief prose only restated the call, so it did
+  not add, alter, hide, or auto-select a variant.
