@@ -106,4 +106,7 @@ agent; `read` is the only tool you may call.
   sprint-reviewer → reviewer/fixer workers`; pinned every `eval agent()` call to
   `opus`; ran evidence-only specialist review in parallel; and enforced fixing,
   focused re-review, a two-round cap, and the clean → verify → land lifecycle.
+- 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — depth three, exact
+  pinned review model, parallel evidence workers, fixer, focused re-review, and
+  two-round cap all remained intact.
 

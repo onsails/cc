@@ -24,7 +24,12 @@ Orchestrate one large milestone as staged brainstorm/plan/execute cycles in a li
 - Keeps the main session a lean conductor; nests each stage through a `sprint-stage-runner` subagent (Claude Code: probed once per sprint; OMP: requires `task.maxRecursionDepth >= 3`) or falls back to one subagent per step
 - Delegates implementation to an **executor**: native subagents on Claude Code or OMP (recommended default), plus mimo or codex on Claude Code only
 - Engine chosen by arg (`/sprint native|mimo|codex`) or an interactive runtime-supported menu; executor and review models are explicit choices recorded for resume
-- Depends on `mimo-code` for the Claude Code mimo engine; degrades gracefully without `superpowers`/`codex`; OMP currently offers native only
+- Depends on `mimo-code` for the Claude Code mimo engine; OMP currently offers native only. Matt Pocock's `grilling`, `codebase-design`, and `diagnosing-bugs` skills are strongly recommended but optional; sprint retains built-in brainstorming, planning, diagnosis, and runtime-native SDD paths.
+
+  ```sh
+  claude plugin marketplace add mattpocock/skills
+  claude plugin install mattpocock-skills@mattpocock
+  ```
 
 [Full documentation →](./sprint/README.md)
 

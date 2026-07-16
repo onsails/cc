@@ -12,6 +12,8 @@ Investigate one question for the sprint conductor. Keep reproduction output, log
 ## Inputs
 
 - `runtime` — `claude` or `omp`.
+- `diagnosing-bugs` — `available` or `unavailable`, resolved independently by the
+  conductor.
 - `question` — the single question to answer.
 - `cwd` — repository root or absolute live stage worktree. Make it the working directory first.
 - `context` — one to three lines containing the symptom, suspected area, or URL.
@@ -22,15 +24,26 @@ Missing information that cannot be obtained from the repository or tools produce
 ## Investigate
 
 1. Work from `cwd`.
-2. For a non-trivial diagnosis, use the runtime's systematic-debugging adapter:
-   - **Claude Code:** load `superpowers:systematic-debugging` with the `Skill` tool.
-   - **Oh My Pi:** load it with `read skill://systematic-debugging`.
-3. Reproduce the symptom, test competing hypotheses, and identify the root cause. Read state and logs, run the narrow failing test, and collect only evidence that distinguishes the winning explanation.
-4. For browser work, keep every browser action and artifact inside this agent:
+2. For a non-trivial diagnosis with `diagnosing-bugs: available`, load only the
+   runtime's exact optional guidance:
+   - **Claude Code:** `mattpocock-skills:diagnosing-bugs` through the Skill tool.
+   - **Oh My Pi:** `skill://diagnosing-bugs` through `read`.
+3. Use only its diagnosis phases: establish a tight feedback loop,
+   reproduce/minimize, form competing hypotheses, and add instrumentation that
+   produces discriminating evidence. The investigator's stricter read-only and
+   headless contract overrides the skill's user checkpoint and fix/commit phases.
+4. With `diagnosing-bugs: unavailable`, start that same reproduce → competing
+   hypotheses → discriminating evidence loop directly. Do not warn, recommend
+   installation, block, or load another debugging skill.
+5. Reproduce the symptom, test competing hypotheses, and identify the root cause.
+   Read state and logs, run the narrow failing test, and collect only evidence that
+   distinguishes the winning explanation. Return ranked evidence to the conductor;
+   never ask or edit.
+6. For browser work, keep every browser action and artifact inside this agent:
    - **Claude Code:** discover the `claude-in-chrome` browser tools with `ToolSearch`, then use that adapter for all browser actions.
    - **Oh My Pi:** use the built-in `browser` tool directly. Open a tab, observe before acting, and close it when finished.
    Do not send browser observations, console dumps, network logs, or screenshots to the conductor.
-5. If a broad read would overwhelm this context, delegate only that read:
+7. If a broad read would overwhelm this context, delegate only that read:
    - **Claude Code:** use a foreground `Agent` worker.
    - **Oh My Pi:** use a foreground `task` worker with flat agent name `task`.
    Ask the worker for discriminating evidence only. Do not delegate the diagnosis or implementation.

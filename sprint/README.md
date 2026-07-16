@@ -14,12 +14,12 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 - Work spans sessions and you need to resume "what stage am I on".
 - You want to hand the coding to an executor while steering design yourself.
 
-**Not for:** a single-spec feature (use `superpowers:brainstorming` → `writing-plans` → execute) or a one-off task (delegate directly — a plain subagent, `mimo-code`, or `codex:rescue`).
+**Not for:** a single-spec feature (use a standalone spec/plan workflow) or a one-off task (delegate directly — a plain subagent, `mimo-code`, or `codex:rescue`).
 
 ## How it works
 
 - **Lean conductor.** The main session holds only the sprint doc, current stage, decisions, and open questions. Every technical step runs in an isolated git worktree via a subagent, so diffs and build logs never flood it. Noisy *investigation* (debugging, repros, browser work) is likewise delegated to a named `sprint-investigator` subagent that returns a distilled finding.
-- **Per-stage lifecycle:** brainstorm a spec → write a plan → isolate a worktree → executor implements → review in a dedicated `sprint-reviewer` subagent that fans out parallel correctness/security/test-quality specialists, fixes supported findings, and re-reviews → verify → commit & land → update the doc.
+- **Per-stage lifecycle:** brainstorm a spec in main → dispatch the named `sprint-planner` → isolate a worktree → executor implements → review in a dedicated `sprint-reviewer` subagent that fans out parallel correctness/security/test-quality specialists, fixes supported findings, and re-reviews → verify → commit & land → update the doc.
 - **Executor engines.** Availability is runtime-specific; the orchestration remains the same and only Execute differs:
   - **native** — a named `sprint-stage-executor` subagent on Claude Code or OMP; no external CLI, launcher, or model resolution. The recommended default; the executor model is asked per stage (or pinned).
   - **mimo** — via the `mimo-code` plugin on Claude Code only; provider/model resolved per stage (or pinned).
@@ -34,7 +34,18 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 - **`mimo-code` — hard plugin dependency, Claude Code engine only.** `sprint/.claude-plugin/plugin.json` declares `"dependencies": ["mimo-code"]`, so installing the Claude Code sprint plugin auto-installs it. OMP has no native mimo delegate and does not offer the engine.
 - **Codex — optional, Claude Code only.** The official Codex plugin [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc) (`codex@openai-codex`) provides `codex:rescue` + the `codex-companion` runtime. It lives in an external marketplace, so it cannot be a hard dependency and remains a runtime probe. OMP does not offer it.
 - **OMP nesting depth.** For the nested review gate, the OMP host must configure `task.maxRecursionDepth: 3` or higher.
-- **Best with:** [`superpowers`](https://github.com/obra/superpowers-marketplace) for specs & plans (the skill degrades and tells you what's missing).
+- **Matt Pocock skills — strongly recommended, optional.** Exact capability probes
+  use `grilling`, `codebase-design`, and `diagnosing-bugs`. They improve
+  main-thread brainstorming, child planning, and evidence-first diagnosis:
+
+  ```sh
+  claude plugin marketplace add mattpocock/skills
+  claude plugin install mattpocock-skills@mattpocock
+  ```
+
+  A sprint-only install remains fully usable: direct main-thread brainstorming,
+  the sprint-owned planner contract, evidence-first diagnosis, and runtime-native
+  SDD all have built-in fallbacks. Missing Matt skills never block those paths.
 - A git repository (stages use `git worktree`).
 
 ## Usage

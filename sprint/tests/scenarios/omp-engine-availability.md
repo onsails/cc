@@ -85,3 +85,6 @@ Do not actually invoke `ask`, `task`, `eval`, an agent, a CLI, or any other tool
   either"`, then composed a stage-runner dispatch with `engine: codex`.
 - 2026-07-11 · post-OMP engine-availability contract fix · **GREEN** — native only was offered and marked Recommended; explicit `mimo` and persisted `codex` each reported the missing OMP runtime integration and stopped before questions, worktree creation, or dispatch, with no fallback or invented delegate.
 - 2026-07-12 · post-model-repin skill changes · **PASS** — native was the only offered engine and was marked Recommended; explicit `mimo` and persisted `codex` each preserved the requested engine, reported the missing OMP runtime integration, and stopped before questions or dispatch without fallback or an invented delegate.
+- 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — the menu named flat
+  `sprint-stage-executor` and offered native only; mimo/codex mismatches stopped
+  without substitution or dispatch.

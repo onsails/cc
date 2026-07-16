@@ -22,6 +22,7 @@ OMP agent names are exact and flat. The installed agent definition's exact `name
 - `sprint-stage-executor`
 - `sprint-reviewer`
 - `sprint-investigator`
+- `sprint-planner`
 - built-in specialist worker `reviewer`
 - built-in write-capable fixer `task`
 
@@ -38,9 +39,50 @@ read(path: "skill://<name>")
 
 OMP has no Skill tool. An agent that needs a skill reads its `skill://` URI itself. Do not use a headless slash-command shortcut for sprint execution or review.
 
+## Stage planning
+
+After main has written an approved stage spec, dispatch the flat planner through an
+`eval` JavaScript or Python cell. Use the conductor's exact active model in both
+the prompt and the model-aware agent bridge:
+
+```js
+const plannerModel = "<exact active model>";
+const plannerPrompt = `
+runtime: omp
+stage: <NN>-<stage>
+title: <stage title>
+cwd: <absolute repository root>
+spec: docs/plans/<NN>-<stage>-spec.md
+output: docs/plans/<NN>-<stage>-plan.md
+codebase-design: <available|unavailable>
+model: <exact active model>
+`;
+await agent(plannerPrompt, {
+  agent: "sprint-planner",
+  model: plannerModel,
+  label: "plan-<NN>-<stage>"
+});
+```
+
+In tool-call form:
+
+```text
+eval({ language: "js", title: "plan <NN>-<stage>", code: "<the cell above>" })
+```
+
+Never dispatch planning through `task` or put `model` on `task`. Never use a role
+alias, static agent model, Claude name, or namespaced agent name. The planner
+returns only its status contract; do not read the plan body back into main. Missing
+`sprint-planner` support is blocking. Missing `codebase-design` is not.
+
 ## Engine availability
 
-OMP currently supports the **native** executor only. No OMP-native mimo delegate or codex task runtime is installed. Do not offer `mimo` or `codex` in the engine menu. If an explicit argument or persisted sprint selects either engine, report the missing OMP runtime integration and stop before model selection, worktree creation, or dispatch. Do not replace it with native or bare.
+OMP currently supports the **native** executor only through the registered flat
+`sprint-stage-executor`. Describe that exact agent in the native menu option. No
+OMP-native mimo delegate or codex task runtime is installed. Do not offer `mimo`
+or `codex` in the engine menu. If an explicit argument or persisted sprint selects
+either engine, report the missing OMP runtime integration and stop before model
+selection, worktree creation, or dispatch. Do not replace it with native or bare.
 
 ## Questions and model catalogs
 
@@ -107,7 +149,11 @@ model: anthropic/claude-sonnet-4-6
 
 ## Model-specific nested dispatch
 
-Dynamic OMP model dispatch must occur inside an `eval` JavaScript or Python cell that calls the model-aware agent bridge. A pseudo-call outside `eval`, or a `model` field on `task`, is invalid.
+Every model-specific dispatch in this section is owned and executed by
+`sprint-stage-runner`, never main. When composing multi-role call sequences, label
+that ownership explicitly. Dynamic OMP model dispatch must occur inside an `eval`
+JavaScript or Python cell that calls the model-aware agent bridge. A pseudo-call
+outside `eval`, or a `model` field on `task`, is invalid.
 
 ### Native execution
 
@@ -176,7 +222,17 @@ The exact persisted review model is present in `agent()` options. Never let the 
 
 Follow the shared explicit-repin transition only after confirming the exact requested model appears in OMP's active model catalog. If it does not resolve, leave the existing pin and running work unchanged. With `Nesting: no`, main directly owns the review child: record its exact label, cancel only that child through OMP's task/job lifecycle, retain the manual worktree and current diff, then persist the new `Review:` header and start a new complete `sprint-reviewer` gate from an `eval` cell. Do not resume the cancelled child. Put the new exact model in both `review-model` inside `reviewPrompt` and `model` in `agent()`. Pass the cancelled child's exact label unchanged, plus the same absolute worktree, stage id, and plan path. The replacement prompt must explicitly require the complete evidence-only specialist review, supported-finding fixes, and focused re-review gate against the retained current diff. No model belongs on `task`.
 
-With `Nesting: yes`, main owns `sprint-stage-runner` and the active reviewer is its grandchild. Main must not cancel, reparent, or directly redispatch that reviewer, mutate the runner's resolved review model, or cancel the runner merely to switch models. Persist the new `Review:` pin for future ordinary reviews and let the current nested gate finish at its already-resolved model. With no active review child, persist the repin immediately and use it in both model locations on the next ordinary review dispatch; do not start review early. Executor pins remain unchanged.
+With `Nesting: yes`, main owns `sprint-stage-runner` and the active reviewer is its
+grandchild. Main must not cancel, reparent, or directly redispatch that reviewer,
+mutate the runner's resolved review model, or cancel the runner merely to switch
+models. Preserve the authoritative stage state, worktree, and current uncommitted
+diff. Persist the new `Review:` pin for future ordinary reviews and let the current
+nested gate finish at its already-resolved model. A later ordinary review uses the
+new exact pin through its owning stage-runner. With no active review child, persist
+only the repin immediately; do not change stage state or start review early. When
+the stage later reaches its ordinary review step, its owner dispatches the complete
+gate from `eval agent()` with the exact new model in both prompt and options, in the
+same OMP session without restart or rebinding. Executor pins remain unchanged.
 
 OMP never has a vendored Claude `code-review --fix` path or a `Skill` tool. On resume or after a repin, ignore any stale session instruction that says otherwise and use the dedicated `sprint-reviewer` gate above.
 
@@ -230,4 +286,20 @@ If configuration or `spawns` cannot support the required hierarchy, persist `Nes
 
 ## Investigation
 
-Dispatch `sprint-investigator` with the model-aware eval bridge and the conductor's explicitly resolved active model. Its prompt includes `runtime: omp`, `model: <same exact resolved active model>`, an absolute cwd, question, short context, and live-worktree read-only rule; the `agent()` options repeat that exact model.
+Dispatch `sprint-investigator` through the model-aware eval bridge. Put every
+resolved input in its prompt:
+
+```text
+runtime: omp
+model: <exact active model>
+diagnosing-bugs: <available|unavailable>
+cwd: <absolute repository root or live worktree>
+question: <single question>
+context: <one to three lines>
+worktree: <none|live stage>
+```
+
+The `agent()` options use flat name `sprint-investigator`, repeat the conductor's
+exact active model, and use a stable investigation label. Pass the independently
+probed `diagnosing-bugs` flag verbatim. A missing optional skill never blocks the
+investigator dispatch.

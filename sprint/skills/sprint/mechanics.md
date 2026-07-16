@@ -116,7 +116,11 @@ plan: docs/plans/$S-plan.md
 Implement the plan fully and exactly.
 ```
 
-If SDD is available and the executor can spawn, it follows the runtime's SDD skill. It does not re-judge suitability. Otherwise it implements directly.
+With `sdd: available`, the executor uses its sprint-owned runtime worker protocol
+and does not load an external SDD skill or re-judge suitability. If that
+already-resolved worker dispatch cannot spawn, it returns an error and preserves
+the worktree for resume; it never downgrades to direct implementation. With
+`sdd: unavailable`, the executor implements directly.
 
 `done` requires a non-empty worktree diff and completion of the plan. Resume an incomplete run with the same model and worktree:
 

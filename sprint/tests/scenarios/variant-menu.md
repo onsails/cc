@@ -31,6 +31,9 @@ defers another call, or obscures a missing required field. Do not compose a seco
 call. Pseudo-JSON is fine. Do not modify any files. CRITICAL: write the composed call
 as plain text — do NOT actually invoke AskUserQuestion or any tool other than Read;
 the user must never see a real question from you.
+The response must literally contain `AskUserQuestion(` followed by its complete
+argument. A JSON object that summarizes or claims a call exists is zero composed
+calls and fails.
 
 ## Expected
 
@@ -75,3 +78,7 @@ the user must never see a real question from you.
   four-option `AskUserQuestion` call offered `medium` (Recommended), `default`, `low`,
   and `high`; no tool was invoked. Its brief prose only restated the call, so it did
   not add, alter, hide, or auto-select a variant.
+- 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — one four-option call
+  kept `medium` Recommended and `default` explicit.
+- 2026-07-16 · final Claude procedure (`opus`) · **PASS** — one literal composed
+  call kept `medium` Recommended with `default`, `low`, and `high`.

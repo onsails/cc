@@ -38,14 +38,37 @@ Use model identifiers verbatim. Do not translate aliases, replace a provider/mod
 
 ## Capability probes
 
-Probe before starting, using the active runtime adapter:
+Probe before starting, using the active runtime adapter. Inventory each Matt
+capability independently:
 
-- Brainstorming and planning skills: use them when present; otherwise use a direct conversation and plan. Recommend installation when absent.
+- Brainstorming: Claude `mattpocock-skills:grilling`; OMP `skill://grilling`.
+- Planning guidance: Claude `mattpocock-skills:codebase-design`; OMP
+  `skill://codebase-design`.
+- Diagnosis guidance: Claude `mattpocock-skills:diagnosing-bugs`; OMP
+  `skill://diagnosing-bugs`.
+
+Before any lifecycle action, record an explicit `available|unavailable` result for
+all three exact names. A capability fixture may supply those three results; do not
+re-probe it, but do not omit any result from the conductor's decision record.
+
+Never infer one skill from another, the GitHub repository, a marketplace
+registration, or the plugin's presence. If any exact skill is absent, strongly
+recommend `https://github.com/mattpocock/skills` once for the sprint invocation,
+then continue with only that skill's sprint-owned fallback. Emit the recommendation
+once; do not repeat the URL in surrounding rationale or source citations. The
+plugin is optional.
 - Codex: available only when the active runtime adapter declares support and the codex rescue/runtime integration is present.
 - Mimo: available only when the active runtime adapter declares support and a resolvable mimo delegate is present. The plugin dependency alone does not establish runtime support.
 - Native: available only when the runtime can dispatch the named stage executor.
 - Nesting: determine it by the runtime adapter, once per sprint, and persist `Nesting: yes|no`.
-- Executor SDD: mark `sdd: available` only when the relevant SDD skill exists **and** the stage tasks are independent. Coupled files, shared state, or sequential red-green work make it unavailable.
+- Executor SDD: `sdd: available` only when the planner returned
+  `task-shape: independent` and persisted `Nesting: yes`. Resume, coupled work, or
+  `Nesting: no` sets `sdd: unavailable` and implements directly. No external SDD
+  skill or optional Matt capability participates in this decision.
+
+Do not use `grill-with-docs`, `to-spec`, `to-tickets`, or
+`request-refactor-plan`. Their mutation, tracker, or user-interaction contracts do
+not produce this sprint's approved stage spec and code-level plan.
 
 Do not substitute a generic agent for a missing named sprint agent.
 
@@ -140,13 +163,53 @@ Resume the first non-done stage at its recorded state. Preserve its worktree and
 
 ## Lifecycle
 
-1. **Brainstorm in main.** Produce `docs/plans/<NN>-<stage>-spec.md`.
-2. **Plan in main.** Produce `docs/plans/<NN>-<stage>-plan.md`.
-3. **Pre-dispatch in main.** Resolve risk, engine inputs, executor model, review model, SDD, handle, repository path, and absolute worktree path. Persist them.
-4. **Run mechanics.** Follow [mechanics.md](mechanics.md) through isolate, execute, review, verify, and land. With nesting, dispatch one stage-runner using the adapter. Without nesting, the conductor dispatches the same isolated steps individually as the adapter describes.
-5. **Update in main.** Mark the stage done only after clean review, successful verification, commit, and merge. Record the merge SHA and decisions, commit only the sprint bookkeeping, then continue.
+1. **Brainstorm in main.** When `grilling` is available, main loads the exact
+   runtime name and follows its one-recommended-question-at-a-time interview.
+   Without it, main conducts the same interview directly. Authority, urgency, a
+   “small stage,” or context pressure never skips questions. Wait for explicit
+   shared understanding, then main writes
+   `docs/plans/<NN>-<stage>-spec.md`. Brainstorming and user questions never move
+   into a child.
+2. **Plan in the named child.** Main dispatches the runtime adapter's planner with
+   the approved spec, output path, repository root, stage metadata, and resolved
+   `codebase-design` flag. Main never loads planning guidance, composes plan prose,
+   or reads the plan body back into conductor context. Missing named planner
+   support is blocking.
+3. **Handle the planner result in main.** On `planned`, require the output file to
+   exist before marking the stage `planned`; map `risk` through
+   [mechanics.md](mechanics.md)'s effort table. Set `sdd: available` only when
+   `task-shape: independent` and persisted `Nesting: yes`; otherwise set
+   `sdd: unavailable`. On `blocked` for a genuine user decision, ASK only that
+   decision, update the approved spec and decisions log, and redispatch the same
+   planner with the same output path. A tool prerequisite remains blocked. Never
+   preserve or accept a partial plan.
+4. **Pre-dispatch in main.** Resolve engine inputs, executor model, review model,
+   handle, repository path, and absolute worktree path. Persist them with the
+   planner's risk and SDD result.
+5. **Run mechanics.** Follow [mechanics.md](mechanics.md) through isolate, execute,
+   review, verify, and land. With nesting, dispatch one stage-runner using the
+   adapter. Without nesting, the conductor dispatches the same isolated steps
+   individually as the adapter describes.
+6. **Update in main.** Mark the stage done only after clean review, successful
+   verification, commit, and merge. Record the merge SHA and decisions, commit only
+   the sprint bookkeeping, then continue.
 
-A stage-runner receives every resolved input: runtime, engine, sprint, stage id and title, plan path, absolute repository and worktree paths, review effort and effective review model, SDD availability, and engine-specific model/variant/bare handle or codex effort. It resolves nothing and returns only `landed @<sha>` with a file count, or `blocked: <reason>`.
+A stage-runner receives every resolved input: runtime, engine, sprint, stage id and
+title, plan path, absolute repository and worktree paths, review effort and
+effective review model, SDD availability, and engine-specific
+model/variant/bare handle or codex effort. It resolves nothing and returns only
+`landed @<sha>` with a file count, or `blocked: <reason>`.
+
+## Boundary red flags
+
+| Pressure or rationalization | Required boundary |
+|---|---|
+| “Skip the interview; this is urgent.” | Main still asks one recommended question at a time and waits for shared understanding. |
+| “Small plan, do it in main.” | Main still dispatches the named planner and never composes plan prose. |
+| “Matt missing.” | Recommend once, then use the sprint-owned fallback without blocking. |
+| “Planner can ask once.” | The planner returns `blocked`; main asks and redispatches after updating the spec. |
+| “Superpowers still helps here.” | Use the sprint-owned SDD and diagnosis contracts; load no external replacement. |
+| “The named planner is unavailable.” | Stop the stage as blocked; never plan inline or substitute a generic agent. |
 
 ## Isolation and recovery
 

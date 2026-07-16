@@ -10,6 +10,7 @@ Claude Code uses plugin-namespaced agent names:
 - `sprint:sprint-stage-executor`
 - `sprint:sprint-reviewer`
 - `sprint:sprint-investigator`
+- `sprint:sprint-planner`
 - `mimo-code:mimo-delegate`
 - `mimo-code:mimo-resolve`
 
@@ -29,6 +30,33 @@ Never ask the review-model question in a separate later round when it can be bun
 For an unpinned native stage, use the known Claude model catalog; no resolver probe is needed. ASK every stage and mark the risk-scaled model Recommended. For an unpinned mimo stage, dispatch `mimo-code:mimo-resolve`, then follow the shared narrowing rules.
 
 For a low/cosmetic mimo stage, the variant menu must include `default` and `medium`, with `medium` marked **Recommended**. Add nearest neighbors, at most four total; omitted variants remain reachable through Other.
+
+## Stage planning
+
+After main has written an approved stage spec, dispatch the planner in write-capable
+mode. Never put a `model` field on this dispatch; the planner inherits the active
+Claude session model.
+
+```text
+Agent(
+  subagent_type: "sprint:sprint-planner",
+  mode: "acceptEdits",
+  description: "plan <stage>",
+  prompt: """
+  runtime: claude
+  stage: <NN>-<stage>
+  title: <stage title>
+  cwd: <absolute repository root>
+  spec: docs/plans/<NN>-<stage>-spec.md
+  output: docs/plans/<NN>-<stage>-plan.md
+  codebase-design: <available|unavailable>
+  """
+)
+```
+
+Pass every line exactly once. The planner returns only its status contract; do not
+read the plan body back into main. Missing `sprint:sprint-planner` support is
+blocking. Missing `codebase-design` is not.
 
 ## Nesting
 
@@ -139,4 +167,17 @@ Every child returns a terse status. Main never runs or monitors mimo/codex launc
 
 ## Investigation
 
-Dispatch `sprint:sprint-investigator` without a model override so it inherits the conductor's model. Its prompt includes `runtime: claude`, the absolute cwd, question, short context, and live-worktree read-only rule.
+Dispatch `sprint:sprint-investigator` without a model override so it inherits the
+conductor's model. Its prompt includes every resolved input:
+
+```text
+runtime: claude
+diagnosing-bugs: <available|unavailable>
+cwd: <absolute repository root or live worktree>
+question: <single question>
+context: <one to three lines>
+worktree: <none|live stage>
+```
+
+Pass the independently probed `diagnosing-bugs` flag verbatim. A missing optional
+skill never blocks the investigator dispatch.

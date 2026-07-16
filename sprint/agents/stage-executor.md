@@ -31,12 +31,32 @@ Treat `executor-model` as immutable. Never choose, translate, downgrade, or repl
 
 Use SDD only for `mode: fresh` with `sdd: available`. The conductor already decided the plan's tasks can fan out; do not re-evaluate that decision. On `resume`, or with `sdd: unavailable`, implement directly with the runtime's edit and write tools.
 
-When SDD is enabled, remain the coordinator and let the task workers edit the same manual worktree:
+When SDD is enabled, use this sprint-owned worker protocol directly. Do not load an
+external SDD skill; Superpowers and optional Matt availability have no bearing on
+execution. Remain the coordinator and let task workers edit the same manual
+worktree:
 
-- **Claude Code:** load `superpowers:subagent-driven-development` with the `Skill` tool and follow it. Dispatch every SDD task worker through foreground `Agent` with `subagent_type: "general-purpose"`, `model: <executor-model>`, the absolute `cwd`, `runtime: claude`, the plan path, `executor-model: <executor-model>`, its complete plan task, and an instruction not to commit or ask the user. Put the exact executor model in both the prompt and dispatch option; do not rely on inherited or frontmatter models.
-- **Oh My Pi:** load the skill with `read skill://subagent-driven-development`. Dispatch every SDD task worker from `eval`, using `parallel()` for independent tasks and calls semantically exact to `agent(workerPrompt, { agent: "task", model: executorModel, label: "execute-<stage>-<task>" })`. Every worker prompt includes `runtime: omp`, the plan path, and `executor-model: <executor-model>`. Put the exact resolved model in both the prompt and every call. Do not put `model` on `task`; do not use Claude names or `Agent` syntax.
+- **Claude Code:** dispatch every independent plan task through a foreground
+  `Agent` with `subagent_type: "general-purpose"`,
+  `model: <executor-model>`, the absolute `cwd`, `runtime: claude`, the plan path,
+  `executor-model: <executor-model>`, the task's complete plan instructions, and
+  an instruction not to commit or ask the user. Put the exact executor model in
+  both the prompt and dispatch option; do not rely on inherited or frontmatter
+  models.
+- **Oh My Pi:** dispatch every independent plan task from one `eval` cell, using
+  `parallel()` and calls semantically exact to
+  `agent(workerPrompt, { agent: "task", model: executorModel, label:
+  "execute-<stage>-<task>" })`. Every worker prompt includes `runtime: omp`, the
+  absolute `cwd`, plan path, `executor-model: <executor-model>`, its complete plan
+  task, and no-commit/no-user-question instructions. Put the exact resolved model
+  in both the prompt and every call. Do not put `model` on `task`; do not use
+  Claude names or `Agent` syntax.
 
-If runtime nesting cannot support SDD workers, implement directly and report that SDD was unavailable at execution time. Do not ask for a fallback decision. Do not spawn workers for review, verification, investigation, or resume.
+If runtime nesting unexpectedly cannot support the already-resolved SDD worker
+dispatch, return `status: error` with that exact prerequisite failure and preserve
+the worktree for resume. Do not downgrade an `sdd: available` dispatch to direct
+implementation, ask for a fallback decision, or spawn workers for review,
+verification, investigation, or resume.
 
 ## Result
 

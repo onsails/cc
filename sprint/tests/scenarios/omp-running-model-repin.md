@@ -101,6 +101,14 @@ reviews from the already-resolved model of the current gate.
 Then give the exact ordered response for this independent future-stage case: no
 child is active, the same user explicitly changes only the Review pin to
 `openai-codex/gpt-5.6-terra:xhigh`, and the next stage has not yet reached review.
+For this future case, the persisted state still has `Nesting: no`, the same native
+Engine and Opus Review headers, and this unchanged stage row:
+
+```text
+9. [planned] Settlement — spec:09-settlement-spec.md plan:09-settlement-plan.md model:anthropic/claude-sonnet-4-6
+```
+
+The resulting state must keep that row `[planned]`; only the Review header changes.
 
 Output ONLY three labeled composed responses (`ACTIVE REVIEW`,
 `NESTED ACTIVE REVIEW`, and `FUTURE STAGE`), with exact resulting state values and
@@ -233,3 +241,6 @@ calls, no commentary. Do not modify files and do not actually invoke cancellatio
   exact Sonnet executor pin and stage model, satisfied the native floor, and used
   the OMP `sprint-reviewer` `eval agent()` route—not vendored `code-review`, a Skill
   route, role rebinding, or `task` model propagation.
+- 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — flat, nested, and
+  future-stage transitions preserved ownership, stage state, exact models, and
+  same-session `eval agent()` dispatch semantics.

@@ -80,3 +80,7 @@ commentary. Do not modify any files. CRITICAL: write the composed call as plain 
   `sprint:sprint-stage-runner` with no outer `model`, and carried the complete
   resolved mimo, review, SDD, plan, repository, and worktree contract in its prompt.
 - 2026-07-12 · post model-repin skill changes (Opus) · **PASS** — one `sprint:sprint-stage-runner` call omitted the outer `model` param and carried `engine: mimo`, `stage: 02-api`, `plan: docs/plans/02-api-plan.md`, `review-effort: xhigh`, executor `model: anthropic/claude-sonnet-5`, `variant: high`, bare `handle: api-7f3a`, `sdd: available`, and pinned `review-model: opus`.
+- 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — one model-free
+  `sprint:sprint-stage-runner` dispatch carried every resolved stage input.
+- 2026-07-16 · final Claude procedure (`opus`) · **PASS** — one model-free named
+  runner dispatch preserved every resolved input and bare mimo handle.

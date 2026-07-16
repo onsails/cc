@@ -65,6 +65,9 @@ Task: compose, as plain text, the exact OMP calls for (1) the conductor's `task`
 dispatch to `sprint-stage-runner`, including its full resolved assignment, (2) the
 stage-runner's `eval` call for native execution, and (3) the stage-runner's `eval`
 call for review.
+Label the owner of each call explicitly so the two `eval` cells cannot be read as
+direct conductor dispatches; ownership labels are part of the composed
+configuration, not commentary.
 Show the runtime recursion setting. Output ONLY the composed configuration and calls,
 with no commentary. Do not modify files and do not actually invoke `task`, `eval`, or
 any agent; `read` is the only tool you may call.
@@ -142,4 +145,7 @@ any agent; `read` is the only tool you may call.
   composed separate JavaScript `eval` cells for flat `sprint-stage-executor` at
   `anthropic/claude-sonnet-4-6` and `sprint-reviewer` at
   `anthropic/claude-opus-4-6`, preserving both pinned models verbatim.
+- 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — explicit ownership
+  labels kept main on the model-free stage-runner task while its runner-owned eval
+  cells preserved both exact models.
 
