@@ -84,3 +84,5 @@ commentary. Do not modify any files. CRITICAL: write the composed call as plain 
   `sprint:sprint-stage-runner` dispatch carried every resolved stage input.
 - 2026-07-16 · final Claude procedure (`opus`) · **PASS** — one model-free named
   runner dispatch preserved every resolved input and bare mimo handle.
+- 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — the
+  model-free Claude runner dispatch preserved every resolved stage input.

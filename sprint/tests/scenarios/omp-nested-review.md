@@ -110,3 +110,5 @@ agent; `read` is the only tool you may call.
   pinned review model, parallel evidence workers, fixer, focused re-review, and
   two-round cap all remained intact.
 
+- 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — depth-three
+  nested review, parallel evidence, repair, re-review, and retry cap remained intact.

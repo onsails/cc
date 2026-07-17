@@ -149,3 +149,5 @@ any agent; `read` is the only tool you may call.
   labels kept main on the model-free stage-runner task while its runner-owned eval
   cells preserved both exact models.
 
+- 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — model-free
+  stage-runner dispatch and exact executor and reviewer model pins remained intact.

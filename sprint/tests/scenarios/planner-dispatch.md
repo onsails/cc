@@ -59,3 +59,5 @@ invoke Agent, Skill, or any tool other than Read.
   override, and no plan body.
 - 2026-07-16 · final Claude procedure (`opus`) · **PASS** — exactly one
   `acceptEdits` planner dispatch used the exact stage title and all contract fields.
+- 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — one exact
+  `plan 03-session` planner dispatch carried all inputs and no plan prose.

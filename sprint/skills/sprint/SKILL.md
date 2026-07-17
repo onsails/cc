@@ -83,7 +83,13 @@ The engines are:
 
 An explicit engine argument or persisted sprint engine wins only when the active runtime adapter supports it. If it is unavailable, report the missing runtime integration and stop; never substitute another engine.
 
-Without an engine argument, ASK across all engines the active runtime adapter declares available. Offer native when available, mimo only when its runtime delegate resolves, and codex only when its runtime integration resolves. Mark **native Recommended**. Give every option a one-line description. Never auto-pick merely because one engine is recommended.
+Without an engine argument, resolve every engine the active runtime adapter declares
+available. If exactly one resolves, record it without asking. If several resolve,
+ASK once with every available engine. Offer native when available, mimo only when
+its runtime delegate resolves, and codex only when its runtime integration resolves.
+Mark **native Recommended** when offered, and give every option a one-line
+description. Never auto-pick among several engines merely because one is
+recommended.
 
 Record one of:
 

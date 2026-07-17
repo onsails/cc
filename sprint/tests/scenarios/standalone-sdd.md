@@ -80,3 +80,5 @@ Read.
 - 2026-07-16 · post mechanics cutover, final Claude procedure (`opus`) · **PASS**
   — all four source contracts agreed on sprint-owned fan-out and resumable error;
   both runtimes composed the required exact-model workers without an external skill.
+- 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — both
+  runtimes retained sprint-owned exact-model SDD without external skills.

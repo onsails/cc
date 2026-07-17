@@ -82,3 +82,5 @@ calls and fails.
   kept `medium` Recommended and `default` explicit.
 - 2026-07-16 · final Claude procedure (`opus`) · **PASS** — one literal composed
   call kept `medium` Recommended with `default`, `low`, and `high`.
+- 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — the
+  four-option variant menu still marked medium Recommended.

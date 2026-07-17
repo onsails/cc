@@ -57,3 +57,5 @@ invoke `eval`, `task`, `agent`, or any tool other than `read`.
 - 2026-07-16 · post planner contract (GPT-5.6) · **PASS** — one eval cell called
   flat `sprint-planner` with the exact active model in both prompt and options,
   correct label, unavailable guidance fallback, and no inline plan.
+- 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — one model-pinned
+  planner eval carried every required input and returned no plan prose.

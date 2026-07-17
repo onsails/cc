@@ -244,3 +244,5 @@ calls, no commentary. Do not modify files and do not actually invoke cancellatio
 - 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — flat, nested, and
   future-stage transitions preserved ownership, stage state, exact models, and
   same-session `eval agent()` dispatch semantics.
+- 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — flat, nested,
+  and future repins preserved ownership, exact models, and stage state.

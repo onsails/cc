@@ -78,11 +78,13 @@ returns only its status contract; do not read the plan body back into main. Miss
 ## Engine availability
 
 OMP currently supports the **native** executor only through the registered flat
-`sprint-stage-executor`. Describe that exact agent in the native menu option. No
-OMP-native mimo delegate or codex task runtime is installed. Do not offer `mimo`
-or `codex` in the engine menu. If an explicit argument or persisted sprint selects
-either engine, report the missing OMP runtime integration and stop before model
-selection, worktree creation, or dispatch. Do not replace it with native or bare.
+`sprint-stage-executor`. With no explicit or persisted engine, record `Engine:
+native` without showing an engine menu. Resolve the native executor model in the
+next required question and bundle the review-model question there. No OMP-native
+mimo delegate or codex task runtime is installed. If an explicit argument or
+persisted sprint selects either engine, report the missing OMP runtime integration
+and stop before model selection, worktree creation, or dispatch. Do not replace it
+with native or bare.
 
 ## Questions and model catalogs
 

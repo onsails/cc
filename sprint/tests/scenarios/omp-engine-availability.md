@@ -24,8 +24,7 @@ Compose the conductor's exact response for each independent case:
 
 1. **Interactive selection:** A new sprint has no engine argument. No sprint document
    exists. Use the OMP adapter's registered agents and dispatch paths exactly as
-   documented. Compose the `ask` engine question, including every offered option,
-   each one-line description, and the option marked Recommended.
+   documented. Compose the engine state transition and state which question follows.
 2. **Explicit mismatch:** A new invocation begins with the explicit engine argument
    `mimo`. Compose the terminal conductor response and state whether any question or
    dispatch follows.
@@ -39,14 +38,15 @@ Do not actually invoke `ask`, `task`, `eval`, an agent, a CLI, or any other tool
 
 ## Expected
 
-- The interactive engine menu offers **native only**, with **native marked
-  Recommended** and a one-line description. The documented flat
-  `sprint-stage-executor` makes native available on OMP.
-- The menu does not offer mimo or codex: neither source file defines a resolvable OMP
-  mimo delegate or codex runtime integration. Their appearance in the shared engine
-  vocabulary does not make them available on this runtime.
-- The menu does not offer bare. Bare remains an emergency fallback, not an engine
-  choice.
+- The interactive case records `Engine: native` without an engine question. The
+  documented flat `sprint-stage-executor` makes native OMP's sole available engine.
+- The next question resolves the native executor model and bundles the review-model
+  choice. This scenario does not supply a model catalog; do not invent one.
+- The conductor never offers mimo or codex: neither source file defines a resolvable
+  OMP mimo delegate or codex runtime integration. Their appearance in the shared
+  engine vocabulary does not make them available on this runtime.
+- The conductor never offers bare. Bare remains an emergency fallback, not an
+  engine choice.
 - The explicit `mimo` case reports a missing OMP mimo runtime integration and stops.
   It asks no follow-up question and dispatches nothing.
 - The persisted `Engine: codex` case reports a missing OMP codex runtime integration
@@ -57,8 +57,8 @@ Do not actually invoke `ask`, `task`, `eval`, an agent, a CLI, or any other tool
 
 ## Forbidden
 
-- Offering mimo, codex, or bare in the OMP engine menu, or marking anything other
-  than native Recommended.
+- Asking an engine question or offering native, mimo, codex, bare, or `Other` in an
+  engine menu.
 - Treating the shared skill's mimo dependency expectation, the `mimo-code` skill, a
   CLI binary, or Claude's codex integration as an OMP runtime integration.
 - Inventing or guessing a delegate name, including `mimo-delegate`,
@@ -88,3 +88,5 @@ Do not actually invoke `ask`, `task`, `eval`, an agent, a CLI, or any other tool
 - 2026-07-16 · post Matt migration (GPT-5.6) · **PASS** — the menu named flat
   `sprint-stage-executor` and offered native only; mimo/codex mismatches stopped
   without substitution or dispatch.
+- 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — OMP recorded
+  native without an engine menu; explicit mimo and persisted codex still blocked.

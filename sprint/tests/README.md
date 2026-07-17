@@ -19,9 +19,9 @@ verbatim, substituting `<PLUGIN>` with the absolute path of this plugin director
   subagent composes tool calls as *text output only* — it must never actually
   invoke `AskUserQuestion`/`Agent` (a teammate-backed subagent CAN surface a real
   question to the user; observed 2026-07-02).
-- **OMP scenarios** (`omp-engine-availability.md`, `omp-native-model-dispatch.md`,
-  `omp-nested-review.md`, `omp-running-model-repin.md`,
-  `omp-planner-dispatch.md`):
+- **OMP scenarios** (`omp-engine-availability.md`, `omp-single-native-engine.md`,
+  `omp-native-model-dispatch.md`, `omp-nested-review.md`,
+  `omp-running-model-repin.md`, `omp-planner-dispatch.md`):
   dispatch a fresh subagent that plays the OMP sprint conductor. It reads only the
   source files named by that scenario's prompt with `read` (OMP has no Skill tool)
   and composes the exact OMP tool calls (`task`, `eval agent(...)`) as text only —

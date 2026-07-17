@@ -59,3 +59,5 @@ the required source reads.
   ran the read-only reproduce/hypothesize/evidence loop directly without blocking.
 - 2026-07-16 · final Claude procedure (`opus`) · **PASS** — exact Matt loads and
   standalone read-only fallbacks held across both runtime branches.
+- 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — all four
+  diagnosis paths preserved their exact Matt loads and read-only fallbacks.

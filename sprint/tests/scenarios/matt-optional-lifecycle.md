@@ -71,3 +71,5 @@ tool other than Read.
 - 2026-07-16 · final Claude procedure (`opus`) · **PASS** — all three exact probe
   results, main-thread interview, one absent-Matt recommendation, approved spec,
   and named child planning boundaries held.
+- 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — independent
+  Matt results, main-thread interviews, and named planner dispatches remained intact.

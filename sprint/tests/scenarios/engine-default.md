@@ -72,3 +72,5 @@ calls and fails.
   offered native/mimo/codex with native Recommended and inherited review Recommended.
 - 2026-07-16 · final Claude procedure (`opus`) · **PASS** — one literal composed
   call bundled the native-recommended engine menu and inherited-review default.
+- 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — Claude still
+  offered native, mimo, and codex with native Recommended.
