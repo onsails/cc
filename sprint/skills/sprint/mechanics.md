@@ -22,6 +22,7 @@ repo: <absolute repository root>
 worktree: <absolute repository root>/.worktrees/<NN>-<stage>
 review-effort: <high|xhigh|max>
 review-model: <exact effective model>
+review-backend: <exact resolved review reference>
 sdd: <available|unavailable>
 # mimo:  model: <provider/model>  variant: <variant>  handle: <bare handle>
 # native: model: <exact persisted model>
@@ -141,17 +142,18 @@ Bare is a last resort only when no named executor is reachable. The stage-runner
 
 ## 5. Review gate
 
-Review the executor's uncommitted worktree diff before committing. The adapter dispatches the dedicated sprint reviewer at the exact effective review model. Review never runs inline in main or the stage-runner, through a headless CLI shortcut, or through a GitHub PR review workflow.
+Review the executor's uncommitted worktree diff before committing. The adapter dispatches the dedicated sprint reviewer at the exact effective review model with the persisted review backend. Review never runs inline in main or the stage-runner or through a GitHub PR review workflow.
 
 The reviewer:
 
-1. Fans out independent correctness, security, and test-quality specialists in parallel when those areas apply.
-2. Requires every finding to cite concrete worktree evidence.
-3. Deduplicates supported findings and neither invents nor increases severity without evidence.
-4. Dispatches a fixer for supported findings. The fixer changes only the stage worktree and does not commit.
-5. Sends affected areas and applied fixes to the relevant specialists for focused re-review.
-6. Repeats fix and focused re-review at most two times.
-7. Returns `clean` only with no supported unresolved findings. At the retry cap, returns `blocked` with terse unresolved evidence; the stage must not land.
+1. Loads the resolved review backend — the review named by the repository's instructions, or the runtime default — and binds it to the stage: the uncommitted worktree diff against the integration branch, the stage plan as the spec, and no user questions.
+2. Fans out the backend's review axes plus one specialist per applicable risk category (security, architecture, performance, test-quality) in parallel.
+3. Requires every finding to cite concrete worktree evidence.
+4. Deduplicates supported findings and neither invents nor increases severity without evidence.
+5. Dispatches a fixer for supported findings. The fixer changes only the stage worktree and does not commit.
+6. Sends affected areas and applied fixes to the implicated axes and specialists for focused re-review.
+7. Repeats fix and focused re-review at most two times.
+8. Returns `clean` only with no supported unresolved findings. At the retry cap, returns `blocked` with terse unresolved evidence; the stage must not land.
 
 Use `high`, `xhigh`, or `max` review effort from the risk table. Do not use `ultra`. A report-only review cannot pass the gate: fixes require focused re-review.
 

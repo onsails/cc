@@ -72,6 +72,28 @@ not produce this sprint's approved stage spec and code-level plan.
 
 Do not substitute a generic agent for a missing named sprint agent.
 
+### Review backend
+
+Resolve the review backend once per sprint, before the first review dispatch:
+
+1. **Instructions first.** If the repository's agent instructions (`AGENTS.md`,
+   `CLAUDE.md`, or files they include) or the user-level instructions name a
+   concrete code-review skill, agent, or command, that exact reference is the
+   backend. A named review that operates only on pull requests, comments, or
+   tickets is not a valid backend; fall through to the runtime default.
+2. **Runtime default.** OMP: `skill://code-review`; if unavailable, the built-in
+   flat `reviewer` agent with the sprint's two fixed briefs (correctness and
+   plan-conformance). Claude Code: `mattpocock-skills:code-review`; if
+   unavailable, recommend `https://github.com/mattpocock/skills` once and the
+   stage is `blocked: no review backend`.
+3. Never substitute a generic agent or inline review for the resolved backend,
+   and never route the gate through a PR or tracker workflow.
+
+Record `Review backend: <exact reference>` in the sprint document and pass it
+verbatim as `review-backend:` on every review dispatch. Only an explicit user
+instruction replaces a persisted backend; persist the change immediately and
+apply it to future reviews.
+
 ## Engine selection
 
 The engines are:
@@ -153,6 +175,7 @@ Integration: feat/<sprint>  ·  Base: master
 Engine: <engine and optional pin>
 Nesting: <yes|no>
 Review: <model> (pinned)                 # only for an explicit review model
+Review backend: <exact reference>
 Legend: todo · brainstorming · planned · executing · review · blocked · done
 
 ## Stages
@@ -163,7 +186,7 @@ Legend: todo · brainstorming · planned · executing · review · blocked · do
 ## Open questions
 ```
 
-Persist `Runtime`, engine, nesting, explicit pins, stage model/variant/handle, status, and merge result immediately when resolved. On resume, read this document first and load its runtime adapter. Never replace persisted explicit choices with current defaults; replace a pin only when the user explicitly repins it.
+Persist `Runtime`, engine, nesting, explicit pins, the review backend, stage model/variant/handle, status, and merge result immediately when resolved. On resume, read this document first and load its runtime adapter. Never replace persisted explicit choices with current defaults; replace a pin only when the user explicitly repins it.
 
 Resume the first non-done stage at its recorded state. Preserve its worktree and engine state. If all stages are done, report completion and stop. If no document exists, create the integration branch, remain on it, and start decomposition.
 

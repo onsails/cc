@@ -41,6 +41,7 @@ Integration: feat/billing  ·  Base: master
 Engine: native (model: anthropic/claude-sonnet-4-6, pinned)
 Nesting: no
 Review: anthropic/claude-opus-4-8 (pinned)
+Review backend: skill://code-review
 Legend: todo · brainstorming · planned · executing · review · blocked · done
 
 ## Stages
@@ -135,7 +136,8 @@ calls, no commentary. Do not modify files and do not actually invoke cancellatio
   "openai-codex/gpt-5.6-terra:xhigh", label: "Review09" })`. The exact Terra id
   appears both as `review-model` inside the prompt and as the `model` option. The
   prompt carries runtime `omp`, stage `09-settlement`, plan
-  `docs/plans/09-settlement-plan.md`, absolute worktree, retained-diff instruction,
+  `docs/plans/09-settlement-plan.md`, absolute worktree, the unchanged
+  `review-backend: skill://code-review`, retained-diff instruction,
   and a requirement to run the complete evidence/fix/focused-re-review gate.
 - The flat active child is replaced rather than mutated in place. No OMP restart,
   new main session, role rebinding, agent-definition/frontmatter edit, model alias
@@ -246,3 +248,8 @@ calls, no commentary. Do not modify files and do not actually invoke cancellatio
   same-session `eval agent()` dispatch semantics.
 - 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — flat, nested,
   and future repins preserved ownership, exact models, and stage state.
+- 2026-07-21 · post review-backend rework (kimi-code/k3) · **PASS** — the flat
+  cancel → persist → redispatch transition preserved the `Review backend:
+  skill://code-review` header and carried it unchanged in the replacement gate
+  prompt; nested and future-stage transitions preserved ownership, exact models,
+  and stage state.

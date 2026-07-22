@@ -20,11 +20,11 @@ Strict Rust development standards with FAIL FAST error handling.
 Orchestrate one large milestone as staged brainstorm/plan/execute cycles in a living sprint doc. Runs on Claude Code or Oh My Pi (OMP).
 
 - Decomposes a multistage milestone into stages; resumes across sessions from the doc
-- Per stage: brainstorm spec → write plan → executor implements → dedicated `sprint-reviewer` gate (parallel specialists, fix, re-review) → verify → land
+- Per stage: brainstorm spec → write plan → executor implements → dedicated `sprint-reviewer` gate (resolved review backend axes + risk specialists, fix, re-review) → verify → land
 - Keeps the main session a lean conductor; nests each stage through a `sprint-stage-runner` subagent (Claude Code: probed once per sprint; OMP: requires `task.maxRecursionDepth >= 3`) or falls back to one subagent per step
 - Delegates implementation to an **executor**: native subagents on Claude Code or OMP (recommended default), plus mimo or codex on Claude Code only
 - Engine chosen by arg (`/sprint native|mimo|codex`) or an interactive runtime-supported menu; executor and review models are explicit choices recorded for resume
-- Depends on `mimo-code` for the Claude Code mimo engine; OMP currently offers native only. Matt Pocock's `grilling`, `codebase-design`, and `diagnosing-bugs` skills are strongly recommended but optional; sprint retains built-in brainstorming, planning, diagnosis, and runtime-native SDD paths.
+- Depends on `mimo-code` for the Claude Code mimo engine; OMP currently offers native only. Matt Pocock's `grilling`, `codebase-design`, and `diagnosing-bugs` skills are strongly recommended but optional; sprint retains built-in brainstorming, planning, diagnosis, and runtime-native SDD paths. The stage review gate uses the code review named by the repository's instructions, or the runtime default: `mattpocock-skills:code-review` on Claude Code, `skill://code-review` on OMP (falling back to OMP's built-in `reviewer` agent).
 
   ```sh
   claude plugin marketplace add mattpocock/skills

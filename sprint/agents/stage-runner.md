@@ -20,6 +20,7 @@ The conductor passes every value below in the prompt. Treat each as resolved dat
 - absolute `repo` and absolute stage `worktree` paths.
 - `review-effort` — `high`, `xhigh`, or `max`.
 - `review-model` — the exact effective model selected for this stage's review.
+- `review-backend` — the exact review reference resolved by the conductor. Pass it to the reviewer verbatim; never resolve, replace, or reinterpret it.
 - `model` — for `engine: native`, the exact selected executor model. Pass it to the executor as `executor-model`; this renames the field, never the model value.
 - `sdd` — `available` or `unavailable` for mimo and native execution.
 - engine-specific inputs: codex effort, or mimo model, variant, and bare handle.
@@ -62,7 +63,7 @@ For native execution and review, use the resolved model string verbatim in the `
    - **mimo:** on Claude, dispatch the namespaced mimo delegate in the foreground with its resolved inputs. Forward `sdd` exactly and resume the same bare handle at most twice; do not start a new session. On OMP, return `blocked: missing OMP mimo integration`; no flat delegate is currently registered.
    - **codex:** on Claude, use the codex task runtime against the stage worktree as mechanics §4a specifies and resume the same task when incomplete. On OMP, return `blocked: missing OMP codex integration`.
    - **bare:** implement in the stage worktree only when no executor agent can be dispatched. Do not silently substitute bare for a failed dispatch.
-3. **Review.** Dispatch the dedicated sprint-reviewer in the foreground. Its prompt must include `runtime`, absolute `cwd: <worktree>`, `stage`, plan path, `review-effort`, and the exact `review-model`. Do not review inline. `clean` advances to verification. `blocked` retains the worktree and stops the stage.
+3. **Review.** Dispatch the dedicated sprint-reviewer in the foreground. Its prompt must include `runtime`, absolute `cwd: <worktree>`, `stage`, plan path, `review-effort`, the exact `review-model`, and the exact `review-backend`. Do not review inline. `clean` advances to verification. `blocked` retains the worktree and stops the stage.
 4. **Verify.** Run the repository's stage test/build commands in the worktree. Verification failure returns to the same executor in `resume` mode; do not patch stage code in this runner. Any executor change then returns to step 3 for a fresh clean review before verification runs again.
 5. **Commit and land.** Only after clean review and verification, commit inside the stage worktree, merge the stage branch into the integration branch with `--no-ff`, then remove the worktree and stage branch as mechanics §7 specifies.
 

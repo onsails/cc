@@ -19,12 +19,12 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 ## How it works
 
 - **Lean conductor.** The main session holds only the sprint doc, current stage, decisions, and open questions. Every technical step runs in an isolated git worktree via a subagent, so diffs and build logs never flood it. Noisy *investigation* (debugging, repros, browser work) is likewise delegated to a named `sprint-investigator` subagent that returns a distilled finding.
-- **Per-stage lifecycle:** brainstorm a spec in main → dispatch the named `sprint-planner` → isolate a worktree → executor implements → review in a dedicated `sprint-reviewer` subagent that fans out parallel correctness/security/test-quality specialists, fixes supported findings, and re-reviews → verify → commit & land → update the doc.
+- **Per-stage lifecycle:** brainstorm a spec in main → dispatch the named `sprint-planner` → isolate a worktree → executor implements → review in a dedicated `sprint-reviewer` subagent that loads the resolved review backend (the review named by the repository's instructions, or the runtime default), fans out its axes plus risk specialists (security, architecture, performance, test-quality), fixes supported findings, and re-reviews → verify → commit & land → update the doc.
 - **Executor engines.** Availability is runtime-specific; the orchestration remains the same and only Execute differs:
   - **native** — a named `sprint-stage-executor` subagent on Claude Code or OMP; no external CLI, launcher, or model resolution. The recommended default; the executor model is asked per stage (or pinned).
   - **mimo** — via the `mimo-code` plugin on Claude Code only; provider/model resolved per stage (or pinned).
   - **codex** — via the official Codex plugin on Claude Code only; an optional runtime probe.
-- **Nesting.** Each stage can run as one `sprint-stage-runner` subagent that nests the executor and the review gate, keeping the conductor's context clean. On Claude Code this is probed once per sprint (whether child agents get the `Agent` tool). On OMP it requires `task.maxRecursionDepth >= 3` — main → `sprint-stage-runner` → `sprint-reviewer` → parallel reviewer/fixer workers — and is otherwise a configuration fact, not a probe. Without nesting, the conductor drives the same steps flat, one subagent per step.
+- **Nesting.** Each stage can run as one `sprint-stage-runner` subagent that nests the executor and the review gate, keeping the conductor's context clean. On Claude Code this is probed once per sprint (whether child agents get the `Agent` tool). On OMP it requires `task.maxRecursionDepth >= 3` — main → `sprint-stage-runner` → `sprint-reviewer` → parallel review/fixer workers — and is otherwise a configuration fact, not a probe. Without nesting, the conductor drives the same steps flat, one subagent per step.
 - **Runtime-specific model dispatch.** Claude Code passes `model` directly on `Agent(...)` and can inherit the session model when it's omitted. OMP's `task` has no per-call model field at all: every executor and review model must be resolved by the conductor up front and threaded explicitly through an `eval agent(prompt, { agent, model })` bridge at each nested dispatch, including resumes.
 - The engine (and any model/review pins) are recorded in the sprint-doc header, so cross-session resume keeps the same setup without re-asking.
 
@@ -36,7 +36,9 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 - **OMP nesting depth.** For the nested review gate, the OMP host must configure `task.maxRecursionDepth: 3` or higher.
 - **Matt Pocock skills — strongly recommended, optional.** Exact capability probes
   use `grilling`, `codebase-design`, and `diagnosing-bugs`. They improve
-  main-thread brainstorming, child planning, and evidence-first diagnosis:
+  main-thread brainstorming, child planning, and evidence-first diagnosis. The
+  `code-review` skill is the default review backend on both runtimes (on OMP it
+  falls back to the built-in `reviewer` agent when unavailable):
 
   ```sh
   claude plugin marketplace add mattpocock/skills
@@ -45,7 +47,9 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 
   A sprint-only install remains fully usable: direct main-thread brainstorming,
   the sprint-owned planner contract, evidence-first diagnosis, and runtime-native
-  SDD all have built-in fallbacks. Missing Matt skills never block those paths.
+  SDD all have built-in fallbacks. Missing Matt skills never block those paths. A
+  code review named by the repository's own instructions (`AGENTS.md`/
+  `CLAUDE.md`) always wins over the runtime default backend.
 - A git repository (stages use `git worktree`).
 
 ## Usage

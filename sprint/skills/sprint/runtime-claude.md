@@ -14,7 +14,9 @@ Claude Code uses plugin-namespaced agent names:
 - `mimo-code:mimo-delegate`
 - `mimo-code:mimo-resolve`
 
-Load skills with the `Skill` tool and their namespaced skill names. Never search the filesystem for a similarly named slash command. In particular, sprint review is not the GitHub PR `/code-review` workflow.
+Load skills with the `Skill` tool and their namespaced skill names. Never search the filesystem for a similarly named slash command.
+
+The default Claude review backend is the `mattpocock-skills:code-review` skill — a two-axis (Standards + Spec) review that the sprint gate binds to the uncommitted stage worktree and stage plan. It is not the GitHub PR `/code-review` workflow, which can never serve as a sprint review backend.
 
 ## Questions and catalogs
 
@@ -87,6 +89,7 @@ Agent(
   worktree: <absolute worktree>
   review-effort: <high|xhigh|max>
   review-model: <exact effective review model>   # include when pinned or raised by native floor; otherwise state session model
+  review-backend: <exact resolved review backend>
   sdd: <available|unavailable>
   # engine=mimo: model: <provider/model>  variant: <variant>  handle: <bare handle, no mimo: prefix>
   # engine=native: model: <exact persisted model>
@@ -145,6 +148,7 @@ Agent(
   plan: docs/plans/<S>-plan.md
   review-effort: <high|xhigh|max>
   review-model: <exact effective review model>
+  review-backend: <exact resolved review backend>
   Review and fix the uncommitted stage diff through the shared review gate.
   Do not commit. Return only `clean` or `blocked: <terse unresolved evidence>`.
   """

@@ -23,6 +23,7 @@ Integration: feat/auth  ·  Base: master
 Engine: mimo
 Nesting: yes
 Review: opus (pinned)
+Review backend: mattpocock-skills:code-review
 Legend: todo · brainstorming · planned · executing · review · blocked · done
 
 ## Stages
@@ -51,7 +52,8 @@ commentary. Do not modify any files. CRITICAL: write the composed call as plain 
 - The prompt body carries ALL of: engine `mimo`; the stage id `02-api` (and/or plan
   path `docs/plans/02-api-plan.md`); review effort `xhigh` (normal risk); model
   `anthropic/claude-sonnet-5`; variant `high`; the **bare** handle `api-7f3a`;
-  `sdd: available`; review model `opus` (from the `Review:` pin).
+  `sdd: available`; review model `opus` (from the `Review:` pin); review backend
+  `mattpocock-skills:code-review` (from the `Review backend:` line).
 
 ## Forbidden
 
@@ -86,3 +88,7 @@ commentary. Do not modify any files. CRITICAL: write the composed call as plain 
   runner dispatch preserved every resolved input and bare mimo handle.
 - 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — the
   model-free Claude runner dispatch preserved every resolved stage input.
+- 2026-07-21 · post review-backend rework (kimi-code/k3) · **PASS** — one
+  model-free `sprint:sprint-stage-runner` dispatch carried every resolved input
+  including `review-backend: mattpocock-skills:code-review` and the bare mimo
+  handle.

@@ -26,6 +26,7 @@ Integration: feat/auth  ·  Base: master
 Engine: native (model: anthropic/claude-sonnet-4-6, pinned)
 Nesting: yes
 Review: anthropic/claude-opus-4-6 (pinned)
+Review backend: skill://code-review
 Legend: todo · brainstorming · planned · executing · review · blocked · done
 
 ## Stages
@@ -83,8 +84,8 @@ any agent; `read` is the only tool you may call.
   native`, sprint `auth`, stage `01-api`, title `API`, plan
   `docs/plans/01-api-plan.md`, review effort `xhigh`, `sdd: available`, executor
   model `anthropic/claude-sonnet-4-6`, review model
-  `anthropic/claude-opus-4-6`, and the repository/worktree context needed to run the
-  stage.
+  `anthropic/claude-opus-4-6`, review backend `skill://code-review`, and the
+  repository/worktree context needed to run the stage.
 - The stage-runner dispatches execution from an `eval` JavaScript or Python cell
   with the semantic equivalent of `await agent(executorPrompt, { agent:
   "sprint-stage-executor", model: "anthropic/claude-sonnet-4-6", label:
@@ -95,7 +96,8 @@ any agent; `read` is the only tool you may call.
   the semantic equivalent of `await agent(reviewPrompt, { agent:
   "sprint-reviewer", model: "anthropic/claude-opus-4-6", label:
   "review-01-api" })`. The review prompt carries the absolute worktree, stage
-  `01-api`, and review effort `xhigh`.
+  `01-api`, review effort `xhigh`, and the persisted `review-backend:
+  skill://code-review` verbatim.
 - The calls use the persisted values verbatim. Neither nested dispatch relies on
   session inheritance or runtime defaults for its model.
 
@@ -151,3 +153,9 @@ any agent; `read` is the only tool you may call.
 
 - 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — model-free
   stage-runner dispatch and exact executor and reviewer model pins remained intact.
+- 2026-07-21 · post review-backend rework (kimi-code/k3) · **PASS** — the
+  model-free `task` assignment carried every resolved input including
+  `review-backend: skill://code-review`; both `eval` cells pinned their exact
+  models; the review prompt propagated the backend verbatim. Minor observation:
+  the composer wrote `executor-model` in the assignment where the template uses
+  `model:` for native — semantically exact, no contract violation.
