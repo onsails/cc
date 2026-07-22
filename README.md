@@ -1,4 +1,4 @@
-# onsails/cc
+# onsails/skills
 
 Claude Code plugins for power users.
 
@@ -48,7 +48,7 @@ Delegate write-capable coding sessions to the [`mimo` CLI](https://github.com/Xi
 ## Installation
 
 ```bash
-claude plugin marketplace add https://github.com/onsails/cc
+claude plugin marketplace add https://github.com/onsails/skills
 claude plugin install rust-dev@onsails-cc
 claude plugin install sprint@onsails-cc
 claude plugin install mimo-code@onsails-cc

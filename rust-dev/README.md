@@ -15,7 +15,7 @@ This skill enforces standards that prevent subtle bugs from shipping.
 ## Install
 
 ```bash
-claude plugin marketplace add https://github.com/onsails/cc
+claude plugin marketplace add https://github.com/onsails/skills
 claude plugin install rust-dev@onsails-cc
 ```
 
