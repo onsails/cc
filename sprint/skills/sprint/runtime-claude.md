@@ -16,7 +16,7 @@ Claude Code uses plugin-namespaced agent names:
 
 Load skills with the `Skill` tool and their namespaced skill names. Never search the filesystem for a similarly named slash command.
 
-The default Claude review backend is the `mattpocock-skills:code-review` skill — a two-axis (Standards + Spec) review that the sprint gate binds to the uncommitted stage worktree and stage plan. It is not the GitHub PR `/code-review` workflow, which can never serve as a sprint review backend.
+The default Claude review backend is the built-in bundled `code-review` skill (the `/code-review` command). The sprint gate binds it to the uncommitted stage worktree at the stage's review effort and never passes `--fix`, `--comment`, a PR target, or `ultra` — fixes are sprint-owned and PR features are prohibited. Any other named review, such as `mattpocock-skills:code-review`, applies only when the repository's or user's instructions explicitly name it. The GitHub PR `/review` workflow can never serve as a sprint review backend.
 
 ## Questions and catalogs
 

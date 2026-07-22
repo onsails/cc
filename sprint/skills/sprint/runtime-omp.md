@@ -147,7 +147,7 @@ repo: /repo/auth
 worktree: /repo/auth/.worktrees/01-api
 review-effort: xhigh
 review-model: anthropic/claude-opus-4-6
-review-backend: skill://code-review
+review-backend: reviewer
 sdd: available
 model: anthropic/claude-sonnet-4-6
 ```
@@ -205,7 +205,7 @@ stage: 01-api
 plan: docs/plans/01-api-plan.md
 review-effort: xhigh
 review-model: anthropic/claude-opus-4-6
-review-backend: skill://code-review
+review-backend: reviewer
 Review and fix the uncommitted stage diff through the complete sprint review gate.
 Do not commit. Return only clean or blocked with unresolved evidence.
 `;
@@ -244,8 +244,8 @@ same OMP session without restart or rebinding. Executor pins remain unchanged.
 
 The conductor resolves the review backend once per sprint (SKILL.md, **Review backend**) and passes it verbatim as `review-backend:` in every review dispatch. On OMP:
 
-- A skill backend loads inside the sprint-reviewer with `read skill://<name>`; OMP has no Skill tool and no headless slash-command route.
-- The OMP runtime default is `skill://code-review`. If it is unavailable, the last-resort backend is the built-in flat `reviewer` agent with the sprint's two fixed briefs (correctness and plan-conformance).
+- A skill backend loads inside the sprint-reviewer with `read skill://<name>`; OMP has no Skill tool and no headless slash-command route. An agent backend is dispatched by its exact flat name.
+- The OMP runtime default is the built-in flat `reviewer` agent with the sprint's two fixed briefs (correctness and plan-conformance). A `skill://` backend such as `skill://code-review` applies only when the repository's or user's instructions explicitly name it.
 - Every review worker and fixer dispatches through `eval agent()` with flat agent `task` at the exact review model. Never put a model on the `task` tool.
 
 On resume or after a repin, ignore any stale session instruction that names a different review path and use the persisted `review-backend` through the dedicated `sprint-reviewer` gate above.
@@ -254,7 +254,7 @@ On resume or after a repin, ignore any stale session instruction that names a di
 
 The sprint-reviewer, not main or the stage-runner, owns all findings and fixes. It uses its received `review-model` and `review-backend` verbatim for every child dispatch.
 
-It first loads the review backend with `read skill://<name>` (or dispatches the named backend agent), binds it to the uncommitted stage diff and stage plan, then runs the backend's axes plus the applicable risk specialists concurrently inside one eval cell with `parallel()`:
+It first loads the review backend with `read skill://<name>` (or uses the named backend agent's own reviewing), binds it to the uncommitted stage diff and stage plan, then runs the backend's axes plus the applicable risk specialists concurrently inside one eval cell with `parallel()`. With the default `reviewer` agent backend, the primary axes are the two fixed briefs, correctness and plan-conformance:
 
 ```js
 const reviewModel = "anthropic/claude-opus-4-6";
@@ -263,8 +263,8 @@ const stage = "02-api";
 const plan = "docs/plans/02-api-plan.md";
 const reviewEffort = "xhigh";
 const efforts = [
-  ["standards-02-api", "Backend axis: Standards. Cite file:line evidence."],
-  ["spec-02-api", "Backend axis: Spec against the stage plan. Cite file:line evidence."],
+  ["correctness-02-api", "Fixed brief: correctness across changed boundaries. Cite file:line evidence."],
+  ["plan-conformance-02-api", "Fixed brief: conformance to the stage plan's acceptance criteria. Cite file:line evidence."],
   ["security-02-api", "Risk brief: authentication and parsing security; cite file:line evidence."],
   ["tests-02-api", "Risk brief: test quality and missing behavioral coverage; cite file:line evidence."]
 ];

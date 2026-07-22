@@ -81,11 +81,11 @@ Resolve the review backend once per sprint, before the first review dispatch:
    concrete code-review skill, agent, or command, that exact reference is the
    backend. A named review that operates only on pull requests, comments, or
    tickets is not a valid backend; fall through to the runtime default.
-2. **Runtime default.** OMP: `skill://code-review`; if unavailable, the built-in
-   flat `reviewer` agent with the sprint's two fixed briefs (correctness and
-   plan-conformance). Claude Code: `mattpocock-skills:code-review`; if
-   unavailable, recommend `https://github.com/mattpocock/skills` once and the
-   stage is `blocked: no review backend`.
+2. **Runtime default.** Claude Code: the built-in bundled `code-review` skill
+   (the `/code-review` command), bound to the uncommitted worktree at the stage's
+   review effort; if it is unavailable, the stage is `blocked: no review
+   backend`. OMP: the built-in flat `reviewer` agent with the sprint's two fixed
+   briefs (correctness and plan-conformance).
 3. Never substitute a generic agent or inline review for the resolved backend,
    and never route the gate through a PR or tracker workflow.
 

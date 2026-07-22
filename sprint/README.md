@@ -36,9 +36,9 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
 - **OMP nesting depth.** For the nested review gate, the OMP host must configure `task.maxRecursionDepth: 3` or higher.
 - **Matt Pocock skills — strongly recommended, optional.** Exact capability probes
   use `grilling`, `codebase-design`, and `diagnosing-bugs`. They improve
-  main-thread brainstorming, child planning, and evidence-first diagnosis. The
-  `code-review` skill is the default review backend on both runtimes (on OMP it
-  falls back to the built-in `reviewer` agent when unavailable):
+  main-thread brainstorming, child planning, and evidence-first diagnosis. Its
+  `code-review` skill is one possible instruction-named review backend, never a
+  default:
 
   ```sh
   claude plugin marketplace add mattpocock/skills
@@ -49,7 +49,9 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
   the sprint-owned planner contract, evidence-first diagnosis, and runtime-native
   SDD all have built-in fallbacks. Missing Matt skills never block those paths. A
   code review named by the repository's own instructions (`AGENTS.md`/
-  `CLAUDE.md`) always wins over the runtime default backend.
+  `CLAUDE.md`) always wins as the review backend; otherwise the gate uses the
+  runtime's built-in default — Claude Code's bundled `/code-review` skill, or
+  OMP's built-in `reviewer` agent.
 - A git repository (stages use `git worktree`).
 
 ## Usage

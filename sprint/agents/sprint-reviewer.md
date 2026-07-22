@@ -30,7 +30,7 @@ Load the backend's instructions by runtime:
 
 If the named backend cannot be loaded or dispatched, return `blocked: review backend <name> unavailable`.
 
-The backend's methodology defines the primary review axes — for example, the `code-review` backend's Standards and Spec axes. Where its defaults conflict with this gate, these bindings override:
+The backend's methodology defines the primary review axes — for example, a `code-review` backend's own axes (Standards and Spec for Matt Pocock's variant; correctness bugs and cleanup opportunities for Claude Code's bundled skill). Where its defaults conflict with this gate, these bindings override:
 
 - **Review target:** the uncommitted stage diff in `cwd` — working tree and index against the integration branch, plus untracked files from `git status --porcelain`. Never a committed-only diff.
 - **Spec source:** the stage plan at the given plan path. Never ask the user for a spec, fixed point, or issue reference.

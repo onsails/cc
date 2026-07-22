@@ -87,7 +87,8 @@ and calls, no commentary. Do not modify files and do not actually invoke `eval`,
 - Ignoring the persisted `review-backend`, re-resolving it, downgrading it, or
   substituting a sprint-owned specialist methodology for the backend's own axes.
 - Dispatching the built-in `reviewer` agent as the review workers while a skill
-  backend is persisted (it is only the last-resort backend when no skill resolves).
+  backend is persisted (it is the OMP default backend, used only when no review
+  is named by instructions).
 - A headless CLI shortcut (`claude -p` or equivalent) substituting for the
   dispatched gate.
 - The `ce:review` PR/comments/todos workflow — as the gate or as the backend; this
