@@ -51,7 +51,8 @@ A milestone too big for a single spec-and-plan — a long, multistage effort tha
   code review named by the repository's own instructions (`AGENTS.md`/
   `CLAUDE.md`) always wins as the review backend; otherwise the gate uses the
   runtime's built-in default — Claude Code's bundled `/code-review` skill, or
-  OMP's built-in `reviewer` agent.
+  OMP's bundled `/review` review (a fan-out of the built-in read-only `reviewer`
+  agent).
 - A git repository (stages use `git worktree`).
 
 ## Usage

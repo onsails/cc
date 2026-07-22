@@ -2,6 +2,7 @@
 name: sprint-reviewer
 description: Coordinates an evidence-based, model-pinned review and repair gate for one uncommitted sprint stage worktree.
 spawns:
+  - reviewer
   - task
 ---
 
@@ -26,7 +27,7 @@ All inputs are resolved. Never ask the user. Missing `review-model` or `review-b
 Load the backend's instructions by runtime:
 
 - **Claude Code:** a skill backend loads through the `Skill` tool with its exact namespaced name. An agent backend is dispatched by its exact name.
-- **Oh My Pi:** a skill backend loads with `read skill://<name>`. An agent backend is dispatched by its exact flat name.
+- **Oh My Pi:** a skill backend loads with `read skill://<name>`. An agent backend is dispatched by its exact flat name. The built-in `reviewer` backend means the bundled `/review` distribution defined in §2.
 
 If the named backend cannot be loaded or dispatched, return `blocked: review backend <name> unavailable`.
 
@@ -44,14 +45,16 @@ Work only in `cwd`. Read the plan, `git status --porcelain`, the uncommitted dif
 
 Compose the review fan-out:
 
-- The backend's own axes, one worker per axis.
+- The backend's own passes. A skill backend contributes one worker per axis. The built-in OMP `reviewer` backend (the bundled `/review` review) contributes file-grouped workers under the bundled distribution rules:
+  - worker count from total added+removed lines: under 100 lines or at most 2 files  1 worker; under 500  up to 2; under 2,000  up to 4; under 5,000  up to 8; otherwise up to 16 — never more workers than files;
+  - group files by locality: same directory or module, related functionality, tests with their implementation;
+  - when the diff exceeds about 50,000 characters or 20 files, give each worker only its file list and short hunk previews and require it to run `git diff -- <path>` and `git diff --cached -- <path>` on its assigned files itself.
+- Always one plan-conformance worker checking the diff against the stage plan's acceptance criteria.
 - One specialist for each applicable risk category touched by the changed diff or plan:
   - **security:** authentication, authorization, cryptography, secrets, untrusted input, parsing, network boundaries, dependency trust, or privilege changes;
   - **architecture:** public contracts, schemas, persistence, cross-module data flow, dependency direction, or several production subsystems;
   - **performance:** hot paths, concurrency, allocation, large collections, database or network loops, caching, or blocking I/O;
   - **test-quality:** the diff changes production behavior. A test-quality finding must identify an unprotected behavior, branch, boundary, or invariant; test count alone is not evidence.
-
-When the backend is an agent without its own methodology (for example OMP's built-in `reviewer`), the primary axes are exactly two fixed briefs: **correctness** and **plan-conformance**.
 
 Absence of a specialist must follow from the inspected diff, not cost or model preference.
 
@@ -71,11 +74,13 @@ A plan finding must cite the acceptance criterion and the conflicting implementa
 Dispatch by runtime:
 
 - **Claude Code:** launch independent `Agent` workers in parallel. Use `subagent_type: "general-purpose"`, `model: <review-model>`, and a distinct description for every worker. Put `runtime: claude`, the plan path, and the same exact `review-model` in every prompt.
-- **Oh My Pi:** use one `eval` JavaScript or Python cell and its `parallel()` helper. Each thunk calls `agent(workerPrompt, { agent: "task", model: reviewModel, label: workerLabel })`. Every worker uses the flat agent name `task`; put `runtime: omp`, the plan path, and the exact `review-model` in every prompt and dispatch option. Dispatch workers only through `eval`'s `agent()` bridge — never through the `task` tool, which has no model field.
+- **Oh My Pi:** use one `eval` JavaScript or Python cell and its `parallel()` helper. Each thunk calls `agent(workerPrompt, { agent: "reviewer", model: reviewModel, label: workerLabel })`. Review workers use the flat agent name `reviewer` — read-only by design; the exact `review-model` in the options overrides its static `@slow` default. Put `runtime: omp`, the plan path, and the exact `review-model` in every prompt and dispatch option. Dispatch workers only through `eval`'s `agent()` bridge — never through the `task` tool, which has no model field.
 
 ## 4. Synthesize evidence only
 
 Normalize worker findings, then deduplicate findings that share the same root cause and affected behavior. Keep the clearest concrete evidence and merge corroborating locations. Preserve the strongest severity that the cited impact supports; never upgrade severity because several workers repeated a claim.
+
+The built-in OMP `reviewer` agent returns its own structured verdict (`overall_correctness`, findings with P0–P3 priorities and confidences). Map those findings into the same evidence rules: its confidence, priority, and verdict never substitute for cited worktree evidence.
 
 Discard a claim when its cited evidence does not exist, does not establish the claimed behavior, concerns unchanged unrelated code without a changed-path regression, or only expresses preference. Do not invent support, fill evidence gaps from intuition, or turn suggestions into gate failures.
 
@@ -94,7 +99,7 @@ For each loop:
 Runtime dispatch remains model-pinned:
 
 - **Claude Code:** dispatch the fixer and every focused re-reviewer with `Agent`, `subagent_type: "general-purpose"`, and `model: <review-model>`.
-- **Oh My Pi:** dispatch the fixer from `eval` with `agent(fixerPrompt, { agent: "task", model: reviewModel, label: "fix-<stage>-<loop>" })`. Dispatch independent focused re-reviewers in parallel from `eval`, each with `agent(prompt, { agent: "task", model: reviewModel, label })`. Every call contains the exact selected model.
+- **Oh My Pi:** dispatch the fixer from `eval` with `agent(fixerPrompt, { agent: "task", model: reviewModel, label: "fix-<stage>-<loop>" })`. Dispatch independent focused re-reviewers in parallel from `eval`, each with `agent(prompt, { agent: "reviewer", model: reviewModel, label })`. Every call contains the exact selected model.
 
 After a clean focused re-review, return `clean`. If supported findings remain after the second focused re-review, stop. Do not run a third fixer, declare success, or allow the stage to land.
 

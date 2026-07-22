@@ -6,7 +6,7 @@ Use this adapter only when the runtime exposes `task`, `ask`, `eval`, and `read`
 
 Nested sprint review has four levels:
 
-`main → sprint-stage-runner → sprint-reviewer → review/fixer workers`
+`main → sprint-stage-runner → sprint-reviewer → reviewer/fixer workers`
 
 Configure:
 
@@ -23,9 +23,10 @@ OMP agent names are exact and flat. The installed agent definition's exact `name
 - `sprint-reviewer`
 - `sprint-investigator`
 - `sprint-planner`
-- built-in write-capable worker `task` (review workers and fixer)
+- built-in read-only review worker `reviewer`
+- built-in write-capable fixer `task`
 
-The review gate's methodology comes from the resolved review backend, not from a built-in worker.
+The review gate's methodology comes from the resolved review backend; the built-in `reviewer` agent executes it read-only.
 
 
 Names such as `sprint:sprint-stage-runner` are invalid. Do not replace a named sprint agent with a Pi role, generic worker, or inline conductor logic.
@@ -245,8 +246,8 @@ same OMP session without restart or rebinding. Executor pins remain unchanged.
 The conductor resolves the review backend once per sprint (SKILL.md, **Review backend**) and passes it verbatim as `review-backend:` in every review dispatch. On OMP:
 
 - A skill backend loads inside the sprint-reviewer with `read skill://<name>`; OMP has no Skill tool and no headless slash-command route. An agent backend is dispatched by its exact flat name.
-- The OMP runtime default is the built-in flat `reviewer` agent with the sprint's two fixed briefs (correctness and plan-conformance). A `skill://` backend such as `skill://code-review` applies only when the repository's or user's instructions explicitly name it.
-- Every review worker and fixer dispatches through `eval agent()` with flat agent `task` at the exact review model. Never put a model on the `task` tool.
+- The OMP runtime default is the bundled `/review` review: a fan-out of the built-in read-only `reviewer` agent under the bundled distribution rules — worker count scaled to diff size, locality-based file grouping, and per-file diff re-reads for very large diffs. A `skill://` backend such as `skill://code-review` applies only when the repository's or user's instructions explicitly name it.
+- Every review worker dispatches through `eval agent()` with flat agent `reviewer` at the exact review model, which overrides the agent's static `@slow` default. The fixer dispatches with flat agent `task`. Never put a model on the `task` tool.
 
 On resume or after a repin, ignore any stale session instruction that names a different review path and use the persisted `review-backend` through the dedicated `sprint-reviewer` gate above.
 
@@ -254,7 +255,7 @@ On resume or after a repin, ignore any stale session instruction that names a di
 
 The sprint-reviewer, not main or the stage-runner, owns all findings and fixes. It uses its received `review-model` and `review-backend` verbatim for every child dispatch.
 
-It first loads the review backend with `read skill://<name>` (or uses the named backend agent's own reviewing), binds it to the uncommitted stage diff and stage plan, then runs the backend's axes plus the applicable risk specialists concurrently inside one eval cell with `parallel()`. With the default `reviewer` agent backend, the primary axes are the two fixed briefs, correctness and plan-conformance:
+It first loads the review backend with `read skill://<name>` (or uses the built-in `reviewer` backend), binds it to the uncommitted stage diff and stage plan, then runs the backend's passes plus the applicable risk specialists concurrently inside one eval cell with `parallel()`. With the default `reviewer` backend, the primary passes are file-grouped workers under the bundled distribution rules (count scaled to diff size, locality grouping), plus a plan-conformance worker:
 
 ```js
 const reviewModel = "anthropic/claude-opus-4-6";
@@ -263,14 +264,15 @@ const stage = "02-api";
 const plan = "docs/plans/02-api-plan.md";
 const reviewEffort = "xhigh";
 const efforts = [
-  ["correctness-02-api", "Fixed brief: correctness across changed boundaries. Cite file:line evidence."],
-  ["plan-conformance-02-api", "Fixed brief: conformance to the stage plan's acceptance criteria. Cite file:line evidence."],
+  ["files-api-02-api", "Files: src/api/** (grouped by locality). Review for merge-blocking bugs; cite file:line evidence."],
+  ["files-auth-02-api", "Files: src/auth/** (grouped by locality). Review for merge-blocking bugs; cite file:line evidence."],
+  ["plan-02-api", "Plan conformance: check the diff against the stage plan's acceptance criteria; cite the criterion and conflicting code."],
   ["security-02-api", "Risk brief: authentication and parsing security; cite file:line evidence."],
   ["tests-02-api", "Risk brief: test quality and missing behavioral coverage; cite file:line evidence."]
 ];
 const findings = await parallel(efforts.map(([label, focus]) => async () =>
   agent(`runtime: omp\ncwd: ${worktree}\nstage: ${stage}\nplan: ${plan}\nreview-effort: ${reviewEffort}\nreview-model: ${reviewModel}\n${focus}\nDo not edit.`, {
-    agent: "task",
+    agent: "reviewer",
     model: reviewModel,
     label
   })

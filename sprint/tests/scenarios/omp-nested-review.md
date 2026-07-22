@@ -67,14 +67,15 @@ and calls, no commentary. Do not modify files and do not actually invoke `eval`,
   plan as its spec source, and never asks the user for a fixed point or spec.
 - The sprint-reviewer fans out the backend's own axes plus the applicable
   security and test-quality risk specialists in parallel, each dispatched through
-  `eval agent()` with flat agent `task` at the pinned `opus` model. Each worker
-  reports findings with concrete evidence from the worktree. The sprint-reviewer
-  synthesizes only supported findings, deduplicates them, and neither invents nor
-  upgrades claims without evidence.
-- When supported findings exist, the sprint-reviewer dispatches a fixer to change
-  the worktree. It then sends the affected areas and fixes to the implicated axes
-  and specialists for a focused re-review; a review that only reports findings
-  cannot pass the gate.
+  `eval agent()` with the flat read-only agent `reviewer` at the pinned `opus`
+  model (overriding its static `@slow` default). Each worker reports findings
+  with concrete evidence from the worktree. The sprint-reviewer synthesizes only
+  supported findings, deduplicates them, and neither invents nor upgrades claims
+  without evidence.
+- When supported findings exist, the sprint-reviewer dispatches a fixer with the
+  flat write-capable agent `task` to change the worktree. It then sends the
+  affected areas and fixes to the implicated axes and specialists for a focused
+  re-review; a review that only reports findings cannot pass the gate.
 - The fix/re-review loop has an explicit finite cap. A clean focused re-review
   returns `clean` to the sprint-stage-runner, which proceeds through verification
   and landing before returning `landed` to main. Findings still unresolved when the
@@ -86,9 +87,8 @@ and calls, no commentary. Do not modify files and do not actually invoke `eval`,
   dedicated sprint-reviewer coordinating parallel backend-axis and risk-brief evidence.
 - Ignoring the persisted `review-backend`, re-resolving it, downgrading it, or
   substituting a sprint-owned specialist methodology for the backend's own axes.
-- Dispatching the built-in `reviewer` agent as the review workers while a skill
-  backend is persisted (it is the OMP default backend, used only when no review
-  is named by instructions).
+- Using the `task` agent for review workers: review workers are the read-only
+  `reviewer` agent; `task` is reserved for the fixer.
 - A headless CLI shortcut (`claude -p` or equivalent) substituting for the
   dispatched gate.
 - The `ce:review` PR/comments/todos workflow — as the gate or as the backend; this
@@ -133,3 +133,9 @@ and calls, no commentary. Do not modify files and do not actually invoke `eval`,
   security and test-quality risk briefs in parallel through `eval agent()` with
   flat `task` at pinned `opus`, and enforced evidence-only synthesis, fixer,
   focused re-review, the two-round cap, and clean → verify → land.
+- 2026-07-21 · post bundled-/review backend semantics (kimi-code/k3) · **PASS** —
+  review workers dispatch through `eval agent()` with the flat read-only
+  `reviewer` agent at pinned `opus` (overriding its static `@slow`), the fixer
+  dispatches with flat `task`, the persisted `skill://code-review` backend is
+  loaded with `read` and bound to the uncommitted diff and stage plan, and the
+  evidence/fix/focused-re-review loop with its two-round cap remains intact.

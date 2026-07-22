@@ -84,8 +84,9 @@ Resolve the review backend once per sprint, before the first review dispatch:
 2. **Runtime default.** Claude Code: the built-in bundled `code-review` skill
    (the `/code-review` command), bound to the uncommitted worktree at the stage's
    review effort; if it is unavailable, the stage is `blocked: no review
-   backend`. OMP: the built-in flat `reviewer` agent with the sprint's two fixed
-   briefs (correctness and plan-conformance).
+   backend`. OMP: the bundled `/review` review — a fan-out of the built-in
+   read-only `reviewer` agent under the bundled distribution rules (worker count
+   scaled to diff size, locality-based file grouping).
 3. Never substitute a generic agent or inline review for the resolved backend,
    and never route the gate through a PR or tracker workflow.
 

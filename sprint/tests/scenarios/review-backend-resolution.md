@@ -57,15 +57,17 @@ agent; `read` is the only tool you may call.
 
 - **Case A:** `Review backend: review-rust-code` — the exact reference named by the
   repository instructions wins over any runtime default.
-- **Case B:** `Review backend: reviewer` — the OMP runtime default is the built-in
-  flat `reviewer` agent, with the sprint's two fixed briefs (correctness and
-  plan-conformance) as the primary axes.
+- **Case B:** `Review backend: reviewer` — the OMP runtime default is the bundled
+  `/review` review: a fan-out of the built-in read-only `reviewer` agent under
+  the bundled distribution rules (worker count scaled to diff size, locality
+  grouping).
 - **Case C:** `Review backend: code-review` — the Claude runtime default is the
   built-in bundled `code-review` skill (the `/code-review` command).
 - **Case D:** the stage is `blocked: no review backend`. No fallback to a generic
   agent or inline review.
 - **Case E:** `ce:review` is rejected as a PR/tracker-only workflow and resolution
-  falls through to the OMP runtime default `reviewer`.
+  falls through to the OMP runtime default `reviewer` (the bundled `/review`
+  review).
 - Every resolved backend is persisted verbatim and passed as `review-backend:` on
   each review dispatch; only an explicit user instruction can replace it later.
 
@@ -85,6 +87,10 @@ agent; `read` is the only tool you may call.
   built-in bundled `code-review` skill (C), a missing Claude default blocks
   without a Matt recommendation (D), and the PR/tracker-only `ce:review` falls
   through to the OMP default (E).
+- 2026-07-21 · post bundled-/review backend semantics (kimi-code/k3) · **PASS** —
+  all five cases resolved per contract; the OMP default is the bundled `/review`
+  review (fan-out of the built-in read-only `reviewer` agent) in both the plain
+  default case (B) and the PR-workflow fall-through (E).
 - Accepting `ce:review` or any PR/comments/todos workflow as the review backend.
 - Substituting a generic agent, a bundled inline review, or a headless CLI
   shortcut for the resolved backend.
