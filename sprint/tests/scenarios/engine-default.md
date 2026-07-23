@@ -74,3 +74,6 @@ calls and fails.
   call bundled the native-recommended engine menu and inherited-review default.
 - 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — Claude still
   offered native, mimo, and codex with native Recommended.
+- 2026-07-23 · post OMP role-binding rewrite (kimi-code/k3) · **PASS** — one
+  `AskUserQuestion` bundled the native-recommended engine menu and the
+  inherit-recommended review-model question; Claude behavior unchanged.

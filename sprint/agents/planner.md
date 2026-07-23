@@ -1,6 +1,7 @@
 ---
 name: sprint-planner
 description: Writes an approved sprint stage specification into a code-level execution plan without user interaction.
+model: "@plan"
 ---
 
 # sprint-planner
@@ -19,7 +20,6 @@ cwd: <absolute repository root>
 spec: docs/plans/<NN>-<stage>-spec.md
 output: docs/plans/<NN>-<stage>-plan.md
 codebase-design: <available|unavailable>
-model: <exact active model>  # OMP only
 ```
 
 Treat every input as resolved. A missing named planner runtime or dispatch mechanism is handled by the conductor before this agent starts.

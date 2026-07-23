@@ -82,3 +82,6 @@ Read.
   both runtimes composed the required exact-model workers without an external skill.
 - 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — both
   runtimes retained sprint-owned exact-model SDD without external skills.
+- 2026-07-23 · post OMP role-binding rewrite (kimi-code/k3) · **PASS** — Claude
+  composed exact-model foreground SDD workers; OMP composed one model-free
+  `task` batch of flat `task` workers inheriting the executor's bound model.

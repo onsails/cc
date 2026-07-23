@@ -73,3 +73,6 @@ tool other than Read.
   and named child planning boundaries held.
 - 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — independent
   Matt results, main-thread interviews, and named planner dispatches remained intact.
+- 2026-07-23 · post OMP role-binding rewrite (kimi-code/k3) · **PASS** —
+  independent Matt probe results, main-thread interview, and named planner
+  dispatch boundaries held.

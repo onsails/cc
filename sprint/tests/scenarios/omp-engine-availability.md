@@ -40,8 +40,8 @@ Do not actually invoke `ask`, `task`, `eval`, an agent, a CLI, or any other tool
 
 - The interactive case records `Engine: native` without an engine question. The
   documented flat `sprint-stage-executor` makes native OMP's sole available engine.
-- The next question resolves the native executor model and bundles the review-model
-  choice. This scenario does not supply a model catalog; do not invent one.
+- No model question follows: OMP sprint models are role-bound by the agent
+  definitions, and the conductor proceeds to decomposition without a model catalog.
 - The conductor never offers mimo or codex: neither source file defines a resolvable
   OMP mimo delegate or codex runtime integration. Their appearance in the shared
   engine vocabulary does not make them available on this runtime.
@@ -68,6 +68,7 @@ Do not actually invoke `ask`, `task`, `eval`, an agent, a CLI, or any other tool
 - Falling back from explicit or persisted mimo/codex to native or bare, auto-picking
   another engine, asking the user to select a model, or prompting for a replacement
   engine.
+- Asking for or pinning an executor or review model in the interactive case.
 - Running implementation inline, starting a fresh engine session, or continuing
   sprint decomposition after either missing-integration response.
 - Actually invoking `ask`, `task`, `eval`, an agent, a CLI, or any tool other than
@@ -90,3 +91,10 @@ Do not actually invoke `ask`, `task`, `eval`, an agent, a CLI, or any other tool
   without substitution or dispatch.
 - 2026-07-17 · post sole-engine selection (GPT-5.6) · **PASS** — OMP recorded
   native without an engine menu; explicit mimo and persisted codex still blocked.
+- 2026-07-23 · updated for role-bound models (contract change) · the interactive
+  case no longer expects a follow-up model question; engine gating expectations
+  are unchanged.
+- 2026-07-23 · post role-binding rewrite (kimi-code/k3) · **PASS** — interactive
+  case recorded `Engine: native` with no menu and no model question; explicit
+  `mimo` and persisted `codex` each reported the missing OMP runtime integration
+  and stopped without fallback, question, or dispatch.

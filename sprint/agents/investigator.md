@@ -1,6 +1,7 @@
 ---
 name: sprint-investigator
 description: Investigates one sprint question in isolation and returns a distilled, evidence-backed finding without implementing a fix.
+model: "@smol"
 spawns:
   - task
 ---

@@ -34,6 +34,8 @@ Parse arguments as:
 - Remaining text is the milestone description.
 - With no description and an existing sprint document, resume it.
 
+Model arguments and `review <model>` are Claude Code only. On OMP, sprint models are role-bound by the agent definitions; an explicit model argument is unsupported — report it and stop before decomposition.
+
 Use model identifiers verbatim. Do not translate aliases, replace a provider/model id, downgrade a choice, or let a nested agent choose again.
 
 ## Capability probes
@@ -84,9 +86,9 @@ Resolve the review backend once per sprint, before the first review dispatch:
 2. **Runtime default.** Claude Code: the built-in bundled `code-review` skill
    (the `/code-review` command), bound to the uncommitted worktree at the stage's
    review effort; if it is unavailable, the stage is `blocked: no review
-   backend`. OMP: the bundled `/review` review — a fan-out of the built-in
-   read-only `reviewer` agent under the bundled distribution rules (worker count
-   scaled to diff size, locality-based file grouping).
+   backend`. OMP: `reviewer` — the bundled `/review` review, a fan-out of the
+   built-in read-only `reviewer` agent under the bundled distribution rules
+   (worker count scaled to diff size, locality-based file grouping).
 3. Never substitute a generic agent or inline review for the resolved backend,
    and never route the gate through a PR or tracker workflow.
 
@@ -127,7 +129,9 @@ Engine: bare
 
 ## Executor and review model selection
 
-Executor and reviewer models are separate user choices.
+This section applies to **Claude Code**. On OMP, executor, reviewer, planner, and investigator models are role-bound by the sprint agent definitions (`@task`, `@slow`, `@plan`, `@smol`), resolving through the user's `modelRoles`; the conductor never asks, pins, resolves, or passes a model, and the sprint document records no model fields. A mid-sprint model-change request on OMP is a configuration change owned by the user, not a sprint transition.
+
+On Claude, executor and reviewer models are separate user choices.
 
 ### Mimo executor
 
@@ -175,19 +179,19 @@ Runtime: <claude|omp>
 Integration: feat/<sprint>  ·  Base: master
 Engine: <engine and optional pin>
 Nesting: <yes|no>
-Review: <model> (pinned)                 # only for an explicit review model
+Review: <model> (pinned)                 # Claude only, for an explicit review model
 Review backend: <exact reference>
 Legend: todo · brainstorming · planned · executing · review · blocked · done
 
 ## Stages
 1. [done] Schema — spec:01-schema-spec.md plan:01-schema-plan.md (merged @a1b2c3)
-2. [executing] API — spec:02-api-spec.md plan:02-api-plan.md wt:.worktrees/02-api model:<exact-model>
+2. [executing] API — spec:02-api-spec.md plan:02-api-plan.md wt:.worktrees/02-api model:<exact-model>   # model: Claude only
 3. [todo] UI
 ## Decisions log
 ## Open questions
 ```
 
-Persist `Runtime`, engine, nesting, explicit pins, the review backend, stage model/variant/handle, status, and merge result immediately when resolved. On resume, read this document first and load its runtime adapter. Never replace persisted explicit choices with current defaults; replace a pin only when the user explicitly repins it.
+Persist `Runtime`, engine, nesting, explicit pins (Claude only), the review backend, stage model/variant/handle, status, and merge result immediately when resolved. An OMP sprint document records no `Review:` line and no stage-row model. On resume, read this document first and load its runtime adapter. Never replace persisted explicit choices with current defaults; replace a pin only when the user explicitly repins it.
 
 Resume the first non-done stage at its recorded state. Preserve its worktree and engine state. If all stages are done, report completion and stop. If no document exists, create the integration branch, remain on it, and start decomposition.
 
@@ -213,9 +217,9 @@ Resume the first non-done stage at its recorded state. Preserve its worktree and
    decision, update the approved spec and decisions log, and redispatch the same
    planner with the same output path. A tool prerequisite remains blocked. Never
    preserve or accept a partial plan.
-4. **Pre-dispatch in main.** Resolve engine inputs, executor model, review model,
-   handle, repository path, and absolute worktree path. Persist them with the
-   planner's risk and SDD result.
+4. **Pre-dispatch in main.** Resolve engine inputs, handle, repository path, and
+   absolute worktree path — plus executor and review models on Claude. Persist
+   them with the planner's risk and SDD result.
 5. **Run mechanics.** Follow [mechanics.md](mechanics.md) through isolate, execute,
    review, verify, and land. With nesting, dispatch one stage-runner using the
    adapter. Without nesting, the conductor dispatches the same isolated steps

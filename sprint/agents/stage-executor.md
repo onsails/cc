@@ -1,6 +1,7 @@
 ---
 name: sprint-stage-executor
 description: Implements one sprint stage plan in its existing git worktree, directly or through runtime-native SDD workers, and supports on-disk resume.
+model: "@task"
 spawns:
   - task
 ---
@@ -16,9 +17,9 @@ Implement one sprint stage fully and exactly in the supplied worktree. You are w
 - plan path or full plan.
 - `mode` — `fresh` or `resume`.
 - `sdd` — `available` or `unavailable`, already resolved by the conductor.
-- `executor-model` — the exact model selected for this stage.
+- `executor-model` — (Claude only) the exact model selected for this stage.
 
-Treat `executor-model` as immutable. Never choose, translate, downgrade, or replace it, and never let a static agent model silently override it. Never ask the user.
+On Claude, treat `executor-model` as immutable: never choose, translate, downgrade, or replace it, and never let a static agent model silently override it. On OMP your model is bound by this definition; no model input is passed. Never ask the user.
 
 ## Implement
 
@@ -43,14 +44,11 @@ worktree:
   an instruction not to commit or ask the user. Put the exact executor model in
   both the prompt and dispatch option; do not rely on inherited or frontmatter
   models.
-- **Oh My Pi:** dispatch every independent plan task from one `eval` cell, using
-  `parallel()` and calls semantically exact to
-  `agent(workerPrompt, { agent: "task", model: executorModel, label:
-  "execute-<stage>-<task>" })`. Every worker prompt includes `runtime: omp`, the
-  absolute `cwd`, plan path, `executor-model: <executor-model>`, its complete plan
-  task, and no-commit/no-user-question instructions. Put the exact resolved model
-  in both the prompt and every call. Do not put `model` on `task`; do not use
-  Claude names or `Agent` syntax.
+- **Oh My Pi:** dispatch every independent plan task through one `task` batch
+  call with flat agent `task`. Every worker prompt includes `runtime: omp`, the
+  absolute `cwd`, plan path, its complete plan task, and no-commit/no-user-question
+  instructions. Workers inherit your bound model; pass no model anywhere. Do not
+  use an `eval` cell, the `agent()` bridge, Claude names, or `Agent` syntax.
 
 If runtime nesting unexpectedly cannot support the already-resolved SDD worker
 dispatch, return `status: error` with that exact prerequisite failure and preserve
@@ -66,7 +64,7 @@ Return a terse result, never a diff dump:
 - `status: done | incomplete | error` with the reason;
 - changed files from `git status --porcelain` and `git diff --stat`.
 
-`done` requires a non-empty worktree diff and completion of the plan. An empty diff is `incomplete`. For `incomplete` or `error`, state that the dispatcher can re-dispatch with `mode: resume`, the same `cwd`, and the same `executor-model`.
+`done` requires a non-empty worktree diff and completion of the plan. An empty diff is `incomplete`. For `incomplete` or `error`, state that the dispatcher can re-dispatch with `mode: resume` and the same `cwd` (plus the same `executor-model` on Claude).
 
 ## Rules
 

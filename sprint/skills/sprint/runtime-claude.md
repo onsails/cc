@@ -37,7 +37,11 @@ For a low/cosmetic mimo stage, the variant menu must include `default` and `medi
 
 After main has written an approved stage spec, dispatch the planner in write-capable
 mode. Never put a `model` field on this dispatch; the planner inherits the active
-Claude session model.
+Claude session model. The agent definition's `model: "@plan"` binds the planner's
+role on OMP; Claude Code cannot resolve that value, warns that it is not in the
+available models, and inherits the parent model — the intended Claude behavior.
+The same applies to `sprint-investigator` (`@smol`). Executor and reviewer
+dispatches below pass an explicit per-call model, which overrides the definition.
 
 ```text
 Agent(

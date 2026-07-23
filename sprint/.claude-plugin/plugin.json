@@ -1,7 +1,7 @@
 {
   "name": "sprint",
   "description": "Orchestrate staged milestones with native subagents on Claude Code or Oh My Pi, plus codex or mimo executors on Claude Code",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "dependencies": ["mimo-code"],
   "author": { "name": "Andrey Kuz" }
 }

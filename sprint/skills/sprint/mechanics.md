@@ -21,11 +21,11 @@ plan: docs/plans/<NN>-<stage>-plan.md
 repo: <absolute repository root>
 worktree: <absolute repository root>/.worktrees/<NN>-<stage>
 review-effort: <high|xhigh|max>
-review-model: <exact effective model>
+review-model: <exact effective model>        # Claude only — OMP binds models via agent definitions
 review-backend: <exact resolved review reference>
 sdd: <available|unavailable>
 # mimo:  model: <provider/model>  variant: <variant>  handle: <bare handle>
-# native: model: <exact persisted model>
+# native: model: <exact persisted model>     # Claude only
 # codex: effort: <high|xhigh>
 ```
 
@@ -109,7 +109,7 @@ Fresh prompt:
 
 ```text
 runtime: <claude|omp>
-executor-model: <exact persisted model>
+executor-model: <exact persisted model>   # Claude only
 mode: fresh
 cwd: <absolute worktree>
 sdd: <available|unavailable>
@@ -123,11 +123,11 @@ already-resolved worker dispatch cannot spawn, it returns an error and preserves
 the worktree for resume; it never downgrades to direct implementation. With
 `sdd: unavailable`, the executor implements directly.
 
-`done` requires a non-empty worktree diff and completion of the plan. Resume an incomplete run with the same model and worktree:
+`done` requires a non-empty worktree diff and completion of the plan. Resume an incomplete run with the same worktree (and the same model on Claude):
 
 ```text
 runtime: <claude|omp>
-executor-model: <same exact persisted model>
+executor-model: <same exact persisted model>   # Claude only
 mode: resume
 cwd: <same absolute worktree>
 plan: docs/plans/$S-plan.md
@@ -142,7 +142,7 @@ Bare is a last resort only when no named executor is reachable. The stage-runner
 
 ## 5. Review gate
 
-Review the executor's uncommitted worktree diff before committing. The adapter dispatches the dedicated sprint reviewer at the exact effective review model with the persisted review backend. Review never runs inline in main or the stage-runner or through a GitHub PR review workflow.
+Review the executor's uncommitted worktree diff before committing. The adapter dispatches the dedicated sprint reviewer — on Claude at the exact effective review model, on OMP at its definition's bound role — with the persisted review backend. Review never runs inline in main or the stage-runner or through a GitHub PR review workflow.
 
 The reviewer:
 
@@ -194,4 +194,4 @@ The conductor may perform a single narrow lookup itself. Multi-step debugging, b
 | normal | xhigh | high | standard | xhigh |
 | risky / wide blast radius | xhigh | max | strongest | max |
 
-Codex effort and mimo variant are separate vocabularies. Codex uses `high|xhigh`; mimo uses `minimal|low|medium|high|max` and has no `xhigh`. For mimo, ASK with `default`, the table's risk-scaled value (always visible and Recommended), and nearest neighbors up to the runtime's four-option limit. For native, map `standard` and `strongest` to exact models from the runtime catalog, ASK, persist the exact result, and pass it verbatim.
+Codex effort and mimo variant are separate vocabularies. Codex uses `high|xhigh`; mimo uses `minimal|low|medium|high|max` and has no `xhigh`. For mimo, ASK with `default`, the table's risk-scaled value (always visible and Recommended), and nearest neighbors up to the runtime's four-option limit. The native recommended model class applies to Claude only: map `standard` and `strongest` to exact models from the runtime catalog, ASK, persist the exact result, and pass it verbatim. On OMP the native executor runs at its bound `@task` role regardless of risk.

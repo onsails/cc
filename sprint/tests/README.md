@@ -21,12 +21,12 @@ verbatim, substituting `<PLUGIN>` with the absolute path of this plugin director
   question to the user; observed 2026-07-02).
 - **OMP scenarios** (`omp-engine-availability.md`, `omp-single-native-engine.md`,
   `omp-native-model-dispatch.md`, `omp-nested-review.md`,
-  `omp-running-model-repin.md`, `omp-planner-dispatch.md`,
+  `omp-role-rebind.md`, `omp-planner-dispatch.md`,
   `review-backend-resolution.md`):
   dispatch a fresh subagent that plays the OMP sprint conductor. It reads only the
   source files named by that scenario's prompt with `read` (OMP has no Skill tool)
-  and composes the exact OMP tool calls (`task`, `eval agent(...)`) as text only —
-  it must not actually invoke `eval`, `task`, or any agent.
+  and composes the exact OMP `task` calls as text only — it must not actually
+  invoke `task`, `eval`, or any agent.
 
 Then, for every scenario:
 

@@ -61,3 +61,6 @@ invoke Agent, Skill, or any tool other than Read.
   `acceptEdits` planner dispatch used the exact stage title and all contract fields.
 - 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — one exact
   `plan 03-session` planner dispatch carried all inputs and no plan prose.
+- 2026-07-23 · post OMP role-binding rewrite (kimi-code/k3) · **PASS** — one
+  model-free `sprint:sprint-planner` `acceptEdits` dispatch carried all inputs
+  and no plan prose; the planner still inherits the session model on Claude.

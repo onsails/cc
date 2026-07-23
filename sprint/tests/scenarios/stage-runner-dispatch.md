@@ -92,3 +92,7 @@ commentary. Do not modify any files. CRITICAL: write the composed call as plain 
   model-free `sprint:sprint-stage-runner` dispatch carried every resolved input
   including `review-backend: mattpocock-skills:code-review` and the bare mimo
   handle.
+- 2026-07-23 · post OMP role-binding rewrite (kimi-code/k3) · **PASS** — the
+  model-free `sprint:sprint-stage-runner` dispatch carried every resolved input
+  including `review-model: opus`, `review-backend:
+  mattpocock-skills:code-review`, and the bare mimo handle.

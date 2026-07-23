@@ -61,3 +61,5 @@ the required source reads.
   standalone read-only fallbacks held across both runtime branches.
 - 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — all four
   diagnosis paths preserved their exact Matt loads and read-only fallbacks.
+- 2026-07-23 · post OMP role-binding rewrite (kimi-code/k3) · **PASS** — all
+  four diagnosis paths preserved their exact Matt loads and read-only fallbacks.

@@ -84,3 +84,6 @@ calls and fails.
   call kept `medium` Recommended with `default`, `low`, and `high`.
 - 2026-07-17 · post OMP sole-engine selection (GPT-5.6) · **PASS** — the
   four-option variant menu still marked medium Recommended.
+- 2026-07-23 · post OMP role-binding rewrite (kimi-code/k3) · **PASS** — the
+  four-option variant menu kept `medium` Recommended with `default`, `low`, and
+  `high`.

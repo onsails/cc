@@ -91,6 +91,11 @@ agent; `read` is the only tool you may call.
   all five cases resolved per contract; the OMP default is the bundled `/review`
   review (fan-out of the built-in read-only `reviewer` agent) in both the plain
   default case (B) and the PR-workflow fall-through (E).
+- 2026-07-23 · post role-binding rewrite (kimi-code/k3) · **PASS with fix** — the
+  first run wrote `Review backend: /review` for cases B/E, tripping the exact
+  header expectation; the runtime-default wording in SKILL.md and runtime-omp.md
+  was clarified to record the reference as `reviewer`, and the rerun returned
+  `Review backend: reviewer` for B and E with all other cases unchanged.
 - Accepting `ce:review` or any PR/comments/todos workflow as the review backend.
 - Substituting a generic agent, a bundled inline review, or a headless CLI
   shortcut for the resolved backend.
