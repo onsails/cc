@@ -93,7 +93,7 @@ not replace it with native or bare.
 
 ## Questions
 
-Only the interactive conductor uses `ask`. Child OMP sessions are headless and cannot ask. There are no model or variant questions on OMP; the remaining questions are the milestone brainstorm and any genuine user decision surfaced as `blocked`.
+Only the interactive conductor uses `ask`. Child OMP sessions are headless and cannot ask. There are no model or variant questions on OMP; the remaining questions are each stage's own brainstorm interview (SKILL.md lifecycle step 1) and any genuine user decision surfaced as `blocked`.
 
 ## Main to stage-runner
 

@@ -197,13 +197,17 @@ Resume the first non-done stage at its recorded state. Preserve its worktree and
 
 ## Lifecycle
 
-1. **Brainstorm in main.** When `grilling` is available, main loads the exact
+1. **Brainstorm in main.** Every stage gets its own interview, started no
+   earlier than the previous stage's landing (stage 1's follows
+   decomposition). When `grilling` is available, main loads the exact
    runtime name and follows its one-recommended-question-at-a-time interview.
    Without it, main conducts the same interview directly. Authority, urgency, a
-   “small stage,” or context pressure never skips questions. Wait for explicit
-   shared understanding, then main writes
-   `docs/plans/<NN>-<stage>-spec.md`. Brainstorming and user questions never move
-   into a child.
+   “small stage,” context pressure, or shared understanding from decomposition
+   or an earlier stage never skips questions. Wait for explicit shared
+   understanding of this stage, then main writes
+   `docs/plans/<NN>-<stage>-spec.md`. Main never writes a stage's spec before
+   that stage's interview — idle time while a child runs changes nothing.
+   Brainstorming and user questions never move into a child.
 2. **Plan in the named child.** Main dispatches the runtime adapter's planner with
    the approved spec, output path, repository root, stage metadata, and resolved
    `codebase-design` flag. Main never loads planning guidance, composes plan prose,
@@ -242,6 +246,7 @@ model/variant/bare handle or codex effort. It resolves nothing and returns only
 | “Small plan, do it in main.” | Main still dispatches the named planner and never composes plan prose. |
 | “Matt missing.” | Recommend once, then use the sprint-owned fallback without blocking. |
 | “Planner can ask once.” | The planner returns `blocked`; main asks and redispatches after updating the spec. |
+| “The setup interview covered every stage; pre-write specs while idle.” | Each stage still gets its own interview after the previous stage lands; a stage's spec exists only after that interview. |
 | “Superpowers still helps here.” | Use the sprint-owned SDD and diagnosis contracts; load no external replacement. |
 | “The named planner is unavailable.” | Stop the stage as blocked; never plan inline or substitute a generic agent. |
 
