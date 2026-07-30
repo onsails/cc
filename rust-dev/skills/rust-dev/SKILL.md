@@ -6,19 +6,29 @@ allowed-tools: Read, Bash(python3 *), Bash(cargo *)
 
 # Rust Development
 
+## Runtime dispatch
+
+Detect the runtime once, before the workflow:
+
+- Claude Code (`Agent`, `AskUserQuestion`, and `Skill` tools available) → read `runtime-claude.md`.
+- OMP (`task` and `ask` tools available, with `skill://…` readable through `read`) → read `skill://rust-dev/runtime-omp.md`.
+- Any other tool surface → stop and report that this skill has no dispatch table for the runtime.
+
+The selected file is a prompt asset, not a role declaration. Its implementation/review/build labels name the exact runtime subagent arguments. If a named agent is unavailable, stop before delegation: never substitute the generic `task` or `general-purpose` agent and never implement delegated work inline.
+
 ## Workflow
 
 For any non-trivial Rust change:
 
 1. **Discover project guidelines** — Read `CLAUDE.md`, `AGENTS.md` (in repo root and `.claude/`, `.cursor/`, `.codex/` subdirs), `rustfmt.toml`, `clippy.toml`, `.clippy.toml`, `deny.toml`, and `[workspace.lints]` / `[lints]` sections in `Cargo.toml`. These rules apply in addition to Core Rules below.
 
-2. **Implement** — Delegate to `rust-dev:rust-coder` agent. It rediscovers guidelines, implements, then verifies its own work with `cargo clippy --workspace --tests -- -D warnings` and `cargo test --workspace` before reporting done.
+2. **Implement** — Delegate through the runtime dispatch table's implementation entry. It rediscovers guidelines, implements, then verifies its own work with `cargo clippy --workspace --tests -- -D warnings` and `cargo test --workspace` before reporting done.
 
-3. **Review** — Invoke `rust-dev:review-rust-code` agent after rust-coder completes. This is mandatory, not optional. Convert findings into TODOs: critical/warning → fix; suggestions → triage.
+3. **Review** — Delegate through the dispatch table's review entry after implementation completes. This is mandatory, not optional. Convert findings into TODOs: critical/warning → fix; suggestions → triage.
 
-4. **Fix issues one by one** — Delegate each fix to `rust-dev:rust-coder`. Do not batch unrelated fixes into one delegation.
+4. **Fix issues one by one** — Delegate each fix through the implementation entry. Do not batch unrelated fixes into one delegation.
 
-5. **Final build** — `cargo build --workspace` (or delegate to `rust-dev:rust-builder`).
+5. **Final build** — `cargo build --workspace` (or delegate through the build entry).
 
 ## Core Rules
 

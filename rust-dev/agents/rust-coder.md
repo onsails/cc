@@ -91,4 +91,4 @@ Private (default) > `pub(crate)` > `pub`. Start with most restrictive.
 
 5. Report what you changed and any issues found.
 
-Do NOT run `rust-dev:review-rust-code` yourself — the parent (skill orchestrator) invokes that after you complete.
+Do NOT launch review yourself — the parent skill's selected runtime dispatch table names the exact review agent to invoke after you complete.
