@@ -21,8 +21,8 @@ the conductor's context.
    marketplace cache as a fallback). Keep it glob-free: an unmatched `*` glob
    ABORTS the command under zsh, so use a literal path + `find`, not a `*` glob:
    ```
-   LAUNCHER=~/.claude/vendor/onsails-cc/mimo-code/scripts/mimo-run.mjs
-   [ -f "$LAUNCHER" ] || LAUNCHER=$(find ~/.claude/plugins/cache/onsails-cc/mimo-code -path '*/scripts/mimo-run.mjs' 2>/dev/null | head -1)
+   LAUNCHER=~/.claude/vendor/onsails-skills/mimo-code/scripts/mimo-run.mjs
+   [ -f "$LAUNCHER" ] || LAUNCHER=$(find ~/.claude/plugins/cache/onsails-skills/mimo-code -path '*/scripts/mimo-run.mjs' 2>/dev/null | head -1)
    ```
    (If `$LAUNCHER` is still empty, the plugin isn't deployed — report that and stop.)
 2. Resolve the runtime: `RUNNER=$(command -v bun || command -v node)` (bun preferred,

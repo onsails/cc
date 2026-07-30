@@ -1,5 +1,5 @@
 {
-  "name": "onsails-cc",
+  "name": "onsails-skills",
   "owner": { "name": "Andrey Kuz" },
   "plugins": [
     { "name": "rust-dev", "source": "./rust-dev", "description": "Rust development with strict standards and build/review agents" },

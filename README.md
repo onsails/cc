@@ -49,9 +49,9 @@ Delegate write-capable coding sessions to the [`mimo` CLI](https://github.com/Xi
 
 ```bash
 claude plugin marketplace add https://github.com/onsails/skills
-claude plugin install rust-dev@onsails-cc
-claude plugin install sprint@onsails-cc
-claude plugin install mimo-code@onsails-cc
+claude plugin install rust-dev@onsails-skills
+claude plugin install sprint@onsails-skills
+claude plugin install mimo-code@onsails-skills
 ```
 
 Installing `sprint` auto-installs its `mimo-code` dependency. To also use the **codex** engine, install the official Codex plugin from its own marketplace (optional):
@@ -60,6 +60,17 @@ Installing `sprint` auto-installs its `mimo-code` dependency. To also use the **
 claude plugin marketplace add https://github.com/openai/codex-plugin-cc
 claude plugin install codex@openai-codex
 ```
+
+## Oh My Pi (omp)
+
+OMP consumes the same marketplace natively:
+
+```bash
+omp plugin marketplace add onsails/skills
+omp plugin install rust-dev@onsails-skills sprint@onsails-skills
+```
+
+Each installed plugin exposes its `skills/` and `agents/` to OMP (`rust-coder`, `rust-builder`, `review-rust-code`, and the sprint agents). `mimo-code` is Claude Code-only; do not install it in OMP.
 
 ## License
 
