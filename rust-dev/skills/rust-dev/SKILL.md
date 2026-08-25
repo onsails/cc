@@ -14,7 +14,7 @@ Detect the runtime once, before the workflow:
 - OMP (`task` and `ask` tools available, with `skill://…` readable through `read`) → read `skill://rust-dev/runtime-omp.md`.
 - Any other tool surface → stop and report that this skill has no dispatch table for the runtime.
 
-The selected file is a prompt asset, not a role declaration. Its implementation/review/build labels name the exact runtime subagent arguments. If a named agent is unavailable, stop before delegation: never substitute the generic `task` or `general-purpose` agent and never implement delegated work inline.
+The selected file is a prompt asset, not a role declaration. Its implementation and review labels name the exact runtime subagent arguments. If a named agent is unavailable, stop before delegation: never substitute the generic `task` or `general-purpose` agent and never implement delegated work inline.
 
 ## Workflow
 
@@ -28,7 +28,7 @@ For any non-trivial Rust change:
 
 4. **Fix issues one by one** — Delegate each fix through the implementation entry. Do not batch unrelated fixes into one delegation.
 
-5. **Final build** — `cargo build --workspace` (or delegate through the build entry).
+5. **Final build** — Run `cargo build --workspace` directly.
 
 ## Core Rules
 

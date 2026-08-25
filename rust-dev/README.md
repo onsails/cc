@@ -43,7 +43,6 @@ binary crate with anyhow + clap. Proper separation of concerns.
 **Module organization** - Guidance on when to split (500+ lines, 50%+ tests),
 with patterns for test extraction to sibling files.
 
-## Included Agents
+## Included Agent
 
-- **rust-builder** - Runs cargo build/clippy commands
 - **review-rust-code** - Reviews Rust code for standards compliance
