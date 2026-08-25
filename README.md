@@ -10,7 +10,7 @@ Strict Rust development standards with FAIL FAST error handling.
 
 - Enforces Edition 2024, proper error propagation
 - Workspace templates and dependency version lookup
-- rust-builder and review-rust-code agents included
+- review-rust-code agent included
 - Module organization guidance (split at 500+ lines)
 
 [Full documentation →](./rust-dev/README.md)
@@ -70,7 +70,7 @@ omp plugin marketplace add onsails/skills
 omp plugin install rust-dev@onsails-skills sprint@onsails-skills
 ```
 
-Each installed plugin exposes its `skills/` and `agents/` to OMP (`rust-coder`, `rust-builder`, `review-rust-code`, and the sprint agents). `mimo-code` is Claude Code-only; do not install it in OMP.
+Each installed plugin exposes its `skills/` and `agents/` to OMP (`rust-coder`, `review-rust-code`, and the sprint agents). `mimo-code` is Claude Code-only; do not install it in OMP.
 
 ## License
 
